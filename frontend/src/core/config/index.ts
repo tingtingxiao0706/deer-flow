@@ -5,7 +5,9 @@ export function getBackendBaseURL() {
     return new URL(
       env.NEXT_PUBLIC_BACKEND_BASE_URL,
       window.location.origin,
-    ).toString();
+    )
+      .toString()
+      .replace(/\/+$/, "");
   } else {
     return "";
   }
@@ -16,7 +18,9 @@ export function getLangGraphBaseURL(isMock?: boolean) {
     return new URL(
       env.NEXT_PUBLIC_LANGGRAPH_BASE_URL,
       window.location.origin,
-    ).toString();
+    )
+      .toString()
+      .replace(/\/+$/, "");
   } else if (isMock) {
     if (typeof window !== "undefined") {
       return `${window.location.origin}/mock/api`;

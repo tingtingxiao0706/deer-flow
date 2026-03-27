@@ -1,3 +1,4 @@
+from .a2a_relay_tool import A2ARelayTool, build_a2a_relay_tool
 from .clarification_tool import ask_clarification_tool
 from .present_file_tool import present_file_tool
 from .setup_agent_tool import setup_agent
@@ -10,4 +11,6 @@ __all__ = [
     "ask_clarification_tool",
     "view_image_tool",
     "task_tool",
+    "A2ARelayTool",
+    "build_a2a_relay_tool",
 ]

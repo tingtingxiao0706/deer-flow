@@ -80,6 +80,11 @@ class Paths:
         return self.base_dir / "USER.md"
 
     @property
+    def teams_dir(self) -> Path:
+        """Root directory for team configurations: `{base_dir}/teams/`."""
+        return self.base_dir / "teams"
+
+    @property
     def agents_dir(self) -> Path:
         """Root directory for all custom agents: `{base_dir}/agents/`."""
         return self.base_dir / "agents"

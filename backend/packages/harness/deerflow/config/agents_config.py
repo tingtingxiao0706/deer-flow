@@ -15,6 +15,17 @@ SOUL_FILENAME = "SOUL.md"
 AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 
 
+class CustomSkillConfig(BaseModel):
+    """A user-defined skill attached to a custom agent."""
+
+    id: str
+    name: str
+    description: str = ""
+    tools: list[str] = []
+    references: list[str] = []
+    examples: list[str] = []
+
+
 class AgentConfig(BaseModel):
     """Configuration for a custom agent."""
 
@@ -22,6 +33,12 @@ class AgentConfig(BaseModel):
     description: str = ""
     model: str | None = None
     tool_groups: list[str] | None = None
+    emoji: str = "🤖"
+    color: str = "indigo"
+    tags: list[str] = []
+    custom_skills: list[CustomSkillConfig] = []
+    a2a_endpoint: str | None = None
+    source: str | None = None
 
 
 def load_agent_config(name: str | None) -> AgentConfig | None:
@@ -113,6 +130,8 @@ def list_custom_agents() -> list[AgentConfig]:
 
         try:
             agent_cfg = load_agent_config(entry.name)
+            if agent_cfg.source in ("agency", "team-commander"):
+                continue
             agents.append(agent_cfg)
         except Exception as e:
             logger.warning(f"Skipping agent '{entry.name}': {e}")

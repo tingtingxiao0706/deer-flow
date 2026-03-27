@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeerFlow Team Studio - UX Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a1f;
+  --bg-card: #222228;
+  --bg-elevated: #2a2a32;
+  --bg-input: rgba(255,255,255,0.07);
+  --bg-hover: rgba(255,255,255,0.05);
+  --border: rgba(255,255,255,0.08);
+  --border-active: rgba(255,255,255,0.2);
+  --text: #f0f0f5;
+  --text-secondary: #9090a0;
+  --text-muted: #606070;
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dim: rgba(99,102,241,0.15);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --cyan: #06b6d4;
+  --purple: #a855f7;
+  --pink: #ec4899;
+  --orange: #f97316;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --font: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --sidebar-w: 56px;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════ LAYOUT SHELL ═══════════════ */
+.shell {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  background: #17171c;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  z-index: 50;
+}
+.sidebar-logo {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+}
+.sidebar-item {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  position: relative;
+  font-size: 18px;
+}
+.sidebar-item:hover { background: var(--bg-hover); color: var(--text); }
+.sidebar-item.active {
+  background: var(--primary-dim);
+  color: var(--primary-light);
+}
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  width: 3px; height: 20px;
+  background: var(--primary);
+  border-radius: 0 3px 3px 0;
+}
+.sidebar-item .tooltip {
+  position: absolute; left: 52px; top: 50%; transform: translateY(-50%);
+  background: #333; color: #fff; padding: 4px 10px; border-radius: 6px;
+  font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: var(--transition);
+}
+.sidebar-item:hover .tooltip { opacity: 1; }
+.sidebar-spacer { flex: 1; }
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ═══════════════ VIEW TABS (top nav within main) ═══════════════ */
+.view-tabs {
+  display: none;
+}
+
+/* ═══════════════ PAGE: TEAM GALLERY ═══════════════ */
+.page { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.page.active { display: flex; }
+
+.gallery-header {
+  padding: 24px 32px 0;
+}
+.gallery-header h1 {
+  font-size: 22px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.gallery-header .subtitle {
+  color: var(--text-secondary); font-size: 13px; margin-top: 4px;
+}
+.gallery-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 32px;
+}
+.search-box {
+  flex: 1; max-width: 380px;
+  position: relative;
+}
+.search-box input {
+  width: 100%; padding: 8px 12px 8px 36px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+  font-family: var(--font);
+  outline: none; transition: var(--transition);
+}
+.search-box input:focus { border-color: var(--primary); }
+.search-box .search-icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 14px;
+}
+.btn {
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  font-family: var(--font); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: var(--transition);
+  border: 1px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.btn-primary:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn-outline {
+  background: transparent; color: var(--text-secondary); border-color: var(--border);
+}
+.btn-outline:hover { border-color: var(--border-active); color: var(--text); background: var(--bg-hover); }
+.btn-ghost {
+  background: transparent; color: var(--text-secondary); border: none; padding: 6px 10px;
+}
+.btn-ghost:hover { color: var(--text); background: var(--bg-hover); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { padding: 6px; width: 32px; height: 32px; justify-content: center; }
+
+/* Team cards grid */
+.team-grid {
+  flex: 1; overflow-y: auto;
+  padding: 0 32px 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  align-content: start;
+  align-content: start;
+}
+.team-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: visible;
+  align-self: start;
+}
+.team-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--purple));
+  opacity: 0; transition: var(--transition);
+}
+.team-card:hover {
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.team-card:hover::before { opacity: 1; }
+.team-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.team-card-title {
+  font-size: 15px; font-weight: 600;
+}
+.team-card-desc {
+  font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 16px; line-height: 1.6;
+}
+.team-card-members {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 12px;
+}
+.member-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  border: 2px solid var(--bg-card);
+  margin-left: -6px;
+  position: relative;
+  z-index: 1;
+}
+.member-avatar:first-child { margin-left: 0; }
+.member-avatar:hover { z-index: 10; transform: scale(1.15); }
+.member-overflow {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--bg-elevated); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  border: 2px solid var(--bg-card);
+  margin-left: -6px;
+}
+.team-card-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--text-muted);
+}
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.tag-primary { border-color: var(--primary-dim); color: var(--primary-light); background: var(--primary-dim); }
+
+/* New team card */
+.team-card-new {
+  border: 2px dashed var(--border);
+  background: transparent;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; min-height: 200px;
+  color: var(--text-muted);
+}
+.team-card-new:hover {
+  border-color: var(--primary);
+  color: var(--primary-light);
+  background: var(--primary-dim);
+}
+.team-card-new .plus {
+  font-size: 32px; font-weight: 300; line-height: 1;
+}
+
+/* ═══════════════ PAGE: CANVAS EDITOR ═══════════════ */
+.editor-layout {
+  flex: 1; display: flex; overflow: hidden;
+}
+
+/* Left Panel - Agent Browser */
+.agent-panel {
+  width: 280px; flex-shrink: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: width var(--transition);
+}
+.agent-panel.collapsed { width: 0; padding: 0; border-right: none; }
+.panel-expand-tab {
+  position: absolute; top: 50%; z-index: 10;
+  width: 20px; height: 48px; cursor: pointer;
+  background: var(--bg-card); border: 1px solid var(--border);
+  display: none; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-muted);
+  transition: var(--transition);
+}
+.panel-expand-tab:hover { background: var(--bg-hover); color: var(--text); }
+.panel-expand-tab.left {
+  left: 0; transform: translateY(-50%);
+  border-radius: 0 6px 6px 0; border-left: none;
+}
+.panel-expand-tab.right {
+  right: 0; transform: translateY(-50%);
+  border-radius: 6px 0 0 6px; border-right: none;
+}
+.editor-layout:has(.agent-panel.collapsed) .panel-expand-tab.left { display: flex; }
+.editor-layout:has(.config-panel.collapsed) .panel-expand-tab.right { display: flex; }
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-header h3 {
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.panel-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-search input {
+  width: 100%; padding: 6px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
+  font-family: var(--font); outline: none;
+}
+.panel-search input:focus { border-color: var(--primary); }
+
+.division-list {
+  flex: 1; overflow-y: auto;
+  padding: 8px;
+}
+.division-group { margin-bottom: 4px; }
+.division-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+.division-header:hover { background: var(--bg-hover); color: var(--text); }
+.division-header .count {
+  font-size: 10px; color: var(--text-muted); font-weight: 400;
+  background: var(--bg-input); padding: 1px 6px; border-radius: 99px;
+}
+.division-header .chevron {
+  transition: transform var(--transition);
+  font-size: 10px; color: var(--text-muted);
+}
+.division-group.open .division-header .chevron { transform: rotate(90deg); }
+.division-agents {
+  display: none; padding: 2px 0 4px 8px;
+}
+.division-group.open .division-agents { display: block; }
+.agent-mini-card {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  cursor: grab; transition: var(--transition);
+  font-size: 12px;
+}
+.agent-mini-card:hover { background: var(--bg-hover); }
+.agent-mini-card:active { cursor: grabbing; opacity: 0.7; }
+.agent-mini-card .emoji { font-size: 16px; flex-shrink: 0; }
+.agent-mini-card .name { font-weight: 500; }
+.agent-mini-card .desc {
+  font-size: 10px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 160px;
+}
+.agent-mini-card .add-btn {
+  margin-left: auto; opacity: 0;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 14px; color: var(--primary-light);
+  background: var(--primary-dim); flex-shrink: 0;
+  transition: var(--transition);
+}
+.agent-mini-card:hover .add-btn { opacity: 1; }
+
+/* Canvas Area */
+.canvas-area {
+  flex: 1; position: relative;
+  background: var(--bg);
+  overflow: hidden;
+}
+.canvas-bg {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.canvas-content {
+  position: absolute; inset: 0;
+  overflow: auto;
+}
+
+/* Canvas Nodes */
+.canvas-node {
+  position: absolute;
+  width: 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: move;
+  transition: box-shadow var(--transition), border-color var(--transition);
+  user-select: none;
+  z-index: 1;
+}
+.canvas-node:hover { border-color: var(--border-active); box-shadow: var(--shadow); z-index: 5; }
+.canvas-node.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-dim), var(--shadow); z-index: 10; }
+.node-color-bar {
+  height: 3px; border-radius: var(--radius) var(--radius) 0 0;
+}
+.node-body { padding: 12px; }
+.node-top {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.node-emoji { font-size: 20px; }
+.node-title { font-size: 13px; font-weight: 600; flex: 1; }
+.node-close {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 12px;
+  color: var(--text-muted); cursor: pointer;
+  opacity: 0; transition: var(--transition);
+}
+.canvas-node:hover .node-close { opacity: 1; }
+.node-close:hover { background: rgba(239,68,68,0.15); color: var(--error); }
+.node-desc {
+  font-size: 11px; color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.node-skills {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
+.node-skill-tag {
+  font-size: 10px; padding: 1px 6px;
+  border-radius: 99px; border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Handles */
+.node-handle {
+  position: absolute;
+  width: 12px; height: 12px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--text-muted);
+  border-radius: 50%;
+  cursor: crosshair;
+  transition: var(--transition);
+  z-index: 20;
+}
+.node-handle:hover {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+  transform: scale(1.3);
+}
+.node-handle.input { left: -6px; top: 50%; transform: translateY(-50%); }
+.node-handle.output { right: -6px; top: 50%; transform: translateY(-50%); }
+.node-handle.input:hover, .node-handle.output:hover { transform: translateY(-50%) scale(1.3); }
+
+/* SVG Connections */
+.connections-svg {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.connection-path {
+  fill: none; stroke: var(--text-muted); stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.5;
+}
+.connection-path.active { stroke: var(--primary); stroke-dasharray: none; opacity: 0.8; }
+
+/* Canvas Toolbar */
+.canvas-toolbar {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  display: flex; gap: 2px;
+  box-shadow: var(--shadow);
+  z-index: 30;
+}
+.toolbar-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer; border: none; background: none;
+  color: var(--text-secondary); font-size: 14px;
+  transition: var(--transition);
+}
+.toolbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+.toolbar-sep { width: 1px; background: var(--border); margin: 4px 4px; }
+
+/* Empty canvas state */
+.canvas-empty {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--text-muted);
+  gap: 12px; z-index: 1;
+  pointer-events: none;
+}
+.canvas-empty .icon { font-size: 48px; opacity: 0.3; }
+.canvas-empty p { font-size: 13px; }
+
+/* Right Panel - Config */
+.config-panel {
+  width: 320px; flex-shrink: 0;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: width var(--transition);
+}
+.config-panel.collapsed { width: 0; }
+.config-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.config-section h4 {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.config-field { margin-bottom: 12px; }
+.config-field label {
+  display: block; font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 4px; font-weight: 500;
+}
+.config-field input, .config-field textarea, .config-field select {
+  width: 100%; padding: 7px 10px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 13px; font-family: var(--font);
+  outline: none; transition: var(--transition);
+  resize: vertical;
+}
+.config-field input:focus, .config-field textarea:focus, .config-field select:focus {
+  border-color: var(--primary);
+}
+.config-field textarea { min-height: 60px; }
+
+.member-list-config {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.member-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  background: var(--bg-input); font-size: 12px;
+}
+.member-item .emoji { font-size: 16px; }
+.member-item .name { flex: 1; font-weight: 500; }
+.member-item .remove {
+  color: var(--text-muted); cursor: pointer; font-size: 14px;
+  opacity: 0; transition: var(--transition);
+}
+.member-item:hover .remove { opacity: 1; }
+.member-item .remove:hover { color: var(--error); }
+
+.config-panel-footer {
+  padding: 16px; margin-top: auto;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* ═══════════════ PAGE: TEAM CHAT ═══════════════ */
+.chat-layout {
+  flex: 1; display: flex; overflow: hidden;
+}
+.chat-main {
+  flex: 1; display: flex; flex-direction: column;
+}
+.chat-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.chat-header .back {
+  cursor: pointer; color: var(--text-muted);
+  font-size: 18px; padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.chat-header .back:hover { color: var(--text); background: var(--bg-hover); }
+.chat-team-info h2 {
+  font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+.chat-team-info .online {
+  width: 7px; height: 7px; background: var(--success);
+  border-radius: 50%; display: inline-block;
+}
+.chat-team-info .members-inline {
+  font-size: 11px; color: var(--text-muted);
+}
+.chat-members-bar {
+  display: flex; gap: 4px; margin-left: auto;
+}
+.chat-member-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; border: 2px solid var(--bg);
+  position: relative;
+}
+.chat-member-dot .status-ring {
+  position: absolute; inset: -3px;
+  border: 2px solid var(--success);
+  border-radius: 50%; opacity: 0.5;
+}
+
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.chat-msg {
+  display: flex; gap: 10px; max-width: 80%;
+  animation: msgIn 0.3s ease-out;
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.chat-msg.user { margin-left: auto; flex-direction: row-reverse; }
+.chat-msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.chat-msg-body {}
+.chat-msg-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.chat-msg-name { font-size: 12px; font-weight: 600; }
+.chat-msg-role { font-size: 10px; color: var(--text-muted); }
+.chat-msg-time { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.chat-msg-content {
+  padding: 10px 14px;
+  border-radius: 2px 12px 12px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 13px; line-height: 1.6;
+}
+.chat-msg.user .chat-msg-content {
+  background: var(--primary-dim);
+  border-color: rgba(99,102,241,0.2);
+  border-radius: 12px 2px 12px 12px;
+}
+.flow-indicator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px;
+  font-size: 11px; color: var(--text-muted);
+  align-self: center;
+}
+.flow-indicator .arrow { color: var(--primary-light); }
+
+.chat-input-area {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+.chat-input-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px 4px 4px 14px;
+  transition: var(--transition);
+}
+.chat-input-box:focus-within { border-color: var(--primary); }
+.chat-input-box input {
+  flex: 1; background: none; border: none; color: var(--text);
+  font-size: 13px; font-family: var(--font); outline: none;
+}
+.chat-input-box .send-btn {
+  width: 32px; height: 32px;
+  background: var(--primary); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px;
+  transition: var(--transition);
+}
+.chat-input-box .send-btn:hover { background: var(--primary-light); }
+
+/* Chat progress panel */
+.chat-progress {
+  width: 300px; flex-shrink: 0;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+.progress-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.progress-agent {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.progress-agent-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.progress-agent-header .emoji { font-size: 18px; }
+.progress-agent-header .name { font-size: 12px; font-weight: 600; flex: 1; }
+.progress-status {
+  font-size: 10px; padding: 2px 8px;
+  border-radius: 99px; font-weight: 500;
+}
+.progress-status.working { background: rgba(245,158,11,0.15); color: var(--warning); }
+.progress-status.done { background: rgba(16,185,129,0.15); color: var(--success); }
+.progress-status.waiting { background: var(--bg-input); color: var(--text-muted); }
+.progress-steps {
+  display: flex; flex-direction: column; gap: 4px;
+  padding-left: 12px; border-left: 2px solid var(--border);
+  margin-left: 8px;
+}
+.progress-step {
+  font-size: 11px; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0;
+}
+.progress-step .check { color: var(--success); font-size: 12px; }
+.progress-step .spinner {
+  width: 10px; height: 10px; border: 2px solid var(--border);
+  border-top-color: var(--warning);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-step .pending { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+
+/* ═══════════════ SCROLLBAR ═══════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ═══════════════ BADGE ═══════════════ */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 500;
+  background: var(--bg-input); color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.badge-sm { padding: 1px 6px; font-size: 10px; }
+
+/* ═══════════════ VIEW INDICATOR ═══════════════ */
+.view-label {
+  position: fixed; top: 12px; right: 16px;
+  background: var(--primary-dim);
+  color: var(--primary-light);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 600;
+  z-index: 999;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+/* ═══════════════ ANIMATIONS ═══════════════ */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Dragging overlay */
+.drag-overlay {
+  position: fixed; z-index: 1000;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ═══════════════ PAGE: AGENTS ═══════════════ */
+.agents-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+}
+.agents-tab {
+  padding: 12px 20px; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: var(--transition);
+}
+.agents-tab:hover { color: var(--text); }
+.agents-tab.active { color: var(--primary-light); border-bottom-color: var(--primary); }
+.agents-tab .tab-count {
+  font-size: 10px; background: var(--bg-input); padding: 1px 6px;
+  border-radius: 99px; margin-left: 6px; color: var(--text-muted);
+}
+.agents-tab.active .tab-count { background: var(--primary-dim); color: var(--primary-light); }
+
+.agent-full-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 20px;
+  transition: var(--transition); cursor: pointer;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.agent-full-card:hover { border-color: var(--border-active); box-shadow: var(--shadow-sm); }
+.agent-full-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-dim); }
+.agent-full-card .afc-emoji {
+  font-size: 28px; width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); flex-shrink: 0;
+}
+.agent-full-card .afc-body { flex: 1; min-width: 0; }
+.agent-full-card .afc-top {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.agent-full-card .afc-name { font-size: 14px; font-weight: 600; }
+.agent-full-card .afc-source {
+  font-size: 10px; padding: 1px 6px; border-radius: 99px;
+  font-weight: 500;
+}
+.afc-source.local { background: rgba(16,185,129,0.12); color: var(--success); }
+.afc-source.custom { background: rgba(99,102,241,0.12); color: var(--primary-light); }
+.afc-source.remote { background: rgba(245,158,11,0.12); color: var(--warning); }
+.agent-full-card .afc-division {
+  font-size: 11px; color: var(--text-muted); margin-bottom: 6px;
+}
+.agent-full-card .afc-desc {
+  font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  margin-bottom: 8px;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.agent-full-card .afc-skills { display: flex; flex-wrap: wrap; gap: 4px; }
+.agent-full-card .afc-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  flex-shrink: 0; align-items: flex-end; margin-left: auto;
+}
+.afc-status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.afc-status-dot.dormant { background: #555; }
+.afc-status-dot.running { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); width: 520px; max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: modalIn 0.2s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h2 { font-size: 16px; font-weight: 700; }
+.modal-header .close { cursor: pointer; color: var(--text-muted); font-size: 18px; padding: 4px;
+  border-radius: var(--radius-sm); transition: var(--transition); }
+.modal-header .close:hover { background: var(--bg-hover); color: var(--text); }
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+.agents-grid {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 20px 32px; flex: 1; overflow-y: auto;
+}
+
+/* Remote agent URL input */
+.remote-connect-bar {
+  display: flex; gap: 8px; align-items: center;
+  padding: 16px 32px; border-bottom: 1px solid var(--border);
+}
+.remote-connect-bar input {
+  flex: 1; max-width: 480px; padding: 8px 12px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 13px; font-family: var(--font-mono); outline: none;
+}
+.remote-connect-bar input:focus { border-color: var(--primary); }
+
+/* Agent detail drawer */
+.agent-drawer {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 400px;
+  background: var(--bg-card); border-left: 1px solid var(--border);
+  box-shadow: -10px 0 40px rgba(0,0,0,0.3);
+  z-index: 100; transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+.agent-drawer.open { transform: translateX(0); }
+.drawer-header {
+  padding: 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.drawer-header .emoji { font-size: 36px; }
+.drawer-header .info { flex: 1; }
+.drawer-header .info h3 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+.drawer-header .info .div { font-size: 12px; color: var(--text-muted); }
+.drawer-close {
+  cursor: pointer; color: var(--text-muted); font-size: 16px;
+  padding: 4px 8px; border-radius: var(--radius-sm);
+}
+.drawer-close:hover { background: var(--bg-hover); color: var(--text); }
+.drawer-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.drawer-section h4 {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;
+}
+.drawer-section p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.drawer-actions { padding: 16px 20px; display: flex; gap: 8px; }
+
+/* Team card actions row */
+.team-card-actions {
+  display: flex; gap: 6px; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.team-card-actions .btn { flex: 1; justify-content: center; font-size: 11px; padding: 5px 8px; }
+.team-status-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500;
+}
+.team-status-badge.draft { background: var(--bg-input); color: var(--text-muted); }
+.team-status-badge.active { background: rgba(16,185,129,0.12); color: var(--success); }
+
+/* Expert team card (active teams) */
+.expert-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  transition: var(--transition); cursor: pointer;
+  position: relative; overflow: hidden;
+  align-self: start;
+}
+.expert-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--success), var(--cyan));
+}
+.expert-card:hover { border-color: var(--border-active); transform: translateY(-2px); box-shadow: var(--shadow); }
+.expert-card-actions {
+  display: flex; gap: 6px; margin-top: 14px;
+}
+.expert-card-actions .btn { font-size: 12px; }
+
+/* Confirm dialog */
+.confirm-bar {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 20px;
+  box-shadow: var(--shadow); z-index: 200;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; animation: modalIn 0.2s ease-out;
+}
+.confirm-bar.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ═══════ Sidebar ═══════ -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">D</div>
+    <div class="sidebar-item" id="nav-agents" onclick="switchPage('agents')">
+      <span>🤖</span>
+      <span class="tooltip">智能体</span>
+    </div>
+    <div class="sidebar-item" id="nav-experts" onclick="switchPage('experts')">
+      <span>👥</span>
+      <span class="tooltip">专家团队</span>
+    </div>
+    <div class="sidebar-item active" onclick="switchPage('gallery')" id="nav-teams">
+      <span>🏗️</span>
+      <span class="tooltip">团队工作室</span>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-item">
+      <span>⚙️</span>
+      <span class="tooltip">设置</span>
+    </div>
+  </nav>
+
+  <!-- ═══════ Main Content ═══════ -->
+  <div class="main-content">
+    <div class="view-label" id="viewLabel">PAGE 1/4 · 团队模板列表</div>
+
+    <!-- ═══════ Page 0: Agents Management ═══════ -->
+    <div class="page" id="page-agents">
+      <div class="gallery-header">
+        <h1>🤖 智能体管理</h1>
+        <p class="subtitle">管理本地角色 · 创建自定义智能体 · 连接远程 A2A 服务</p>
+      </div>
+      <div class="agents-tabs">
+        <div class="agents-tab active" onclick="switchAgentsTab('local')">
+          📦 本地角色 <span class="tab-count" id="localCount">12</span>
+        </div>
+        <div class="agents-tab" onclick="switchAgentsTab('custom')">
+          ✏️ 自定义 <span class="tab-count" id="customCount">2</span>
+        </div>
+        <div class="agents-tab" onclick="switchAgentsTab('remote')">
+          🌐 远程 <span class="tab-count" id="remoteCount">1</span>
+        </div>
+      </div>
+
+      <!-- Local Agents Tab -->
+      <div class="agents-tab-content" id="tab-local">
+        <div class="gallery-toolbar" style="padding-top:12px;">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="搜索角色名称、技能、部门..." id="agentSearchInput" oninput="filterAgents()">
+          </div>
+          <div style="display:flex;gap:4px;" id="divisionFilters">
+            <span class="badge" style="cursor:pointer;" data-div="all" onclick="filterByDivision('all')">全部</span>
+            <span class="badge" style="cursor:pointer;" data-div="engineering" onclick="filterByDivision('engineering')">💻 工程</span>
+            <span class="badge" style="cursor:pointer;" data-div="design" onclick="filterByDivision('design')">🎨 设计</span>
+            <span class="badge" style="cursor:pointer;" data-div="testing" onclick="filterByDivision('testing')">🧪 测试</span>
+            <span class="badge" style="cursor:pointer;" data-div="marketing" onclick="filterByDivision('marketing')">📢 市场</span>
+            <span class="badge" style="cursor:pointer;" data-div="product" onclick="filterByDivision('product')">📊 产品</span>
+          </div>
+        </div>
+        <div class="agents-grid" id="agentsLocalGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Custom Agents Tab -->
+      <div class="agents-tab-content" id="tab-custom" style="display:none;">
+        <div class="gallery-toolbar" style="padding-top:12px;">
+          <div style="flex:1;"></div>
+          <button class="btn btn-primary" onclick="openModal('createAgent')">＋ 创建自定义智能体</button>
+        </div>
+        <div class="agents-grid" id="agentsCustomGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Remote Agents Tab -->
+      <div class="agents-tab-content" id="tab-remote" style="display:none;">
+        <div class="remote-connect-bar">
+          <input type="text" placeholder="输入 A2A Agent 端点 URL，如 https://agent.example.com/a2a" id="remoteUrlInput">
+          <button class="btn btn-primary" onclick="connectRemoteAgent()">🔗 连接</button>
+        </div>
+        <div class="agents-grid" id="agentsRemoteGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Detail Drawer -->
+    <div class="agent-drawer" id="agentDrawer">
+      <div class="drawer-header">
+        <span class="emoji" id="drawerEmoji">🎨</span>
+        <div class="info">
+          <h3 id="drawerName">UI 设计师</h3>
+          <div class="div" id="drawerDivision">🎨 设计部</div>
+        </div>
+        <span class="drawer-close" onclick="closeDrawer()">✕</span>
+      </div>
+      <div class="drawer-section">
+        <h4>来源</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="afc-source local" id="drawerSource">本地</span>
+          <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);" id="drawerPath">agency-agents/design/ui-designer</span>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h4>描述</h4>
+        <p id="drawerDesc">专注于视觉设计系统、组件库和像素级精确界面创建的 UI 设计专家。</p>
+      </div>
+      <div class="drawer-section">
+        <h4>核心技能</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;" id="drawerSkills">
+          <span class="badge badge-sm">Design System</span>
+          <span class="badge badge-sm">Components</span>
+          <span class="badge badge-sm">A11y</span>
+        </div>
+      </div>
+      <div class="drawer-section">
+        <h4>个性 / Vibe</h4>
+        <p id="drawerVibe" style="font-style:italic;">Creates beautiful, consistent, accessible interfaces that feel just right.</p>
+      </div>
+      <div class="drawer-actions">
+        <button class="btn btn-primary" style="flex:1;" id="drawerActivateBtn" onclick="toggleActivation()">▶ 激活</button>
+        <button class="btn btn-outline" onclick="addToTeamFromDrawer()">➕ 加入团队</button>
+      </div>
+    </div>
+
+    <!-- Create Agent Modal -->
+    <div class="modal-overlay hidden" id="modal-createAgent">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>✏️ 创建自定义智能体</h2>
+          <span class="close" onclick="closeModal('createAgent')">✕</span>
+        </div>
+        <div class="modal-body">
+          <div class="config-field">
+            <label>角色名称 *</label>
+            <input type="text" placeholder="如：Next.js 全栈专家" id="newAgentName">
+          </div>
+          <div class="config-field">
+            <label>Emoji</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" placeholder="🚀" style="width:60px;text-align:center;font-size:20px;" id="newAgentEmoji" value="🚀">
+              <span style="font-size:11px;color:var(--text-muted);align-self:center;">点击选择或直接输入</span>
+            </div>
+          </div>
+          <div class="config-field">
+            <label>所属部门</label>
+            <select id="newAgentDivision">
+              <option value="engineering">💻 工程部</option>
+              <option value="design">🎨 设计部</option>
+              <option value="testing">🧪 测试部</option>
+              <option value="marketing">📢 市场部</option>
+              <option value="product">📊 产品部</option>
+              <option value="custom">📌 自定义</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <label>描述 *</label>
+            <textarea placeholder="描述该智能体的核心能力和擅长领域..." id="newAgentDesc"></textarea>
+          </div>
+          <div class="config-field">
+            <label>System Prompt（可选）</label>
+            <textarea placeholder="自定义 system prompt，定义角色的行为和规则..." id="newAgentPrompt" style="min-height:80px;font-family:var(--font-mono);font-size:12px;"></textarea>
+          </div>
+          <div class="config-field">
+            <label>技能标签</label>
+            <input type="text" placeholder="用逗号分隔，如：Next.js, React, TypeScript" id="newAgentSkills">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('createAgent')">取消</button>
+          <button class="btn btn-primary" onclick="createCustomAgent()">创建智能体</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Page: Expert Teams (active) ═══════ -->
+    <div class="page" id="page-experts">
+      <div class="gallery-header">
+        <h1>👥 专家团队</h1>
+        <p class="subtitle">已启用的团队 · 点击进入聊天 · 查看详情进入编排</p>
+      </div>
+      <div class="gallery-toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="搜索已启用的团队...">
+        </div>
+        <div style="flex:1;"></div>
+        <span style="font-size:12px;color:var(--text-muted);" id="expertTeamCount"></span>
+      </div>
+      <div class="team-grid" id="expertTeamsGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- ═══════ Page: Team Studio (drafts, CRUD) ═══════ -->
+    <div class="page active" id="page-gallery">
+      <div class="gallery-header">
+        <h1>🏗️ 团队工作室</h1>
+        <p class="subtitle">草稿区 · 增删改查团队配置 · 启用后进入专家团队列表</p>
+      </div>
+      <div class="gallery-toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="搜索团队名称...">
+        </div>
+        <div style="flex:1;"></div>
+        <span style="font-size:12px;color:var(--text-muted);" id="draftTeamCount"></span>
+        <button class="btn btn-primary" onclick="createNewTeam()">＋ 新建团队</button>
+      </div>
+      <div class="team-grid" id="draftTeamsGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Confirm bar -->
+    <div class="confirm-bar hidden" id="confirmBar">
+      <span id="confirmMsg"></span>
+      <button class="btn btn-primary btn-sm" id="confirmYes">确认</button>
+      <button class="btn btn-outline btn-sm" onclick="hideConfirm()">取消</button>
+    </div>
+
+    <!-- ═══════ Page 2: Canvas Editor ═══════ -->
+    <div class="page" id="page-editor">
+      <div class="editor-layout">
+        <!-- Left: Agent Panel -->
+        <div class="agent-panel" id="agentPanel">
+          <div class="panel-header">
+            <button class="btn-ghost btn-sm" onclick="goBackFromEditor()" title="返回" style="margin-right:4px;font-size:16px;">←</button>
+            <h3>📦 角色库</h3>
+            <button class="btn-ghost btn-sm" onclick="togglePanel('agentPanel')" title="折叠">◀</button>
+          </div>
+          <div class="panel-search">
+            <input type="text" placeholder="搜索角色...">
+          </div>
+          <div class="division-list">
+            <!-- Engineering -->
+            <div class="division-group open">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>💻 工程部</span>
+                <span class="count">23</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('frontend-dev', '💻', '前端开发专家', 'Frontend', '#06b6d4')">
+                  <span class="emoji">💻</span>
+                  <div>
+                    <div class="name">前端开发专家</div>
+                    <div class="desc">React/Vue/Angular 前端开发</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('backend-dev', '⚙️', '后端开发专家', 'Backend', '#a855f7')">
+                  <span class="emoji">⚙️</span>
+                  <div>
+                    <div class="name">后端开发专家</div>
+                    <div class="desc">API 设计与服务端开发</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('devops', '🔧', 'DevOps 工程师', 'DevOps', '#f97316')">
+                  <span class="emoji">🔧</span>
+                  <div>
+                    <div class="name">DevOps 工程师</div>
+                    <div class="desc">CI/CD 与基础设施自动化</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('security', '🛡️', '安全工程师', 'Security', '#ef4444')">
+                  <span class="emoji">🛡️</span>
+                  <div>
+                    <div class="name">安全工程师</div>
+                    <div class="desc">威胁建模与安全审计</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('db-opt', '🗄️', '数据库优化师', 'Database', '#10b981')">
+                  <span class="emoji">🗄️</span>
+                  <div>
+                    <div class="name">数据库优化师</div>
+                    <div class="desc">Schema 设计与查询优化</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+            <!-- Design -->
+            <div class="division-group">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>🎨 设计部</span>
+                <span class="count">8</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('ui-designer', '🎨', 'UI 设计师', 'UI Design', '#ec4899')">
+                  <span class="emoji">🎨</span>
+                  <div>
+                    <div class="name">UI 设计师</div>
+                    <div class="desc">视觉设计系统与组件库</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('ux-arch', '🔬', 'UX 架构师', 'UX', '#6366f1')">
+                  <span class="emoji">🔬</span>
+                  <div>
+                    <div class="name">UX 架构师</div>
+                    <div class="desc">用户体验架构与交互设计</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('brand', '✨', '品牌守护者', 'Brand', '#f59e0b')">
+                  <span class="emoji">✨</span>
+                  <div>
+                    <div class="name">品牌守护者</div>
+                    <div class="desc">品牌一致性与策略定位</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+            <!-- Testing -->
+            <div class="division-group">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>🧪 测试部</span>
+                <span class="count">8</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('qa', '🧪', 'QA 工程师', 'QA', '#10b981')">
+                  <span class="emoji">🧪</span>
+                  <div>
+                    <div class="name">QA 工程师</div>
+                    <div class="desc">质量保证与测试策略</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+            <!-- Marketing -->
+            <div class="division-group">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>📢 市场部</span>
+                <span class="count">27</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('content', '📝', '内容策略师', 'Content', '#6366f1')">
+                  <span class="emoji">📝</span>
+                  <div>
+                    <div class="name">内容策略师</div>
+                    <div class="desc">内容规划与创作策略</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+                <div class="agent-mini-card" onclick="addNodeToCanvas('seo', '🔎', 'SEO 专家', 'SEO', '#10b981')">
+                  <span class="emoji">🔎</span>
+                  <div>
+                    <div class="name">SEO 专家</div>
+                    <div class="desc">搜索引擎优化策略</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+            <!-- PM -->
+            <div class="division-group">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>🎬 项目管理部</span>
+                <span class="count">6</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('scrum', '🏃', 'Scrum Master', 'Scrum', '#f59e0b')">
+                  <span class="emoji">🏃</span>
+                  <div>
+                    <div class="name">Scrum Master</div>
+                    <div class="desc">敏捷流程与团队协调</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+            <!-- Product -->
+            <div class="division-group">
+              <div class="division-header" onclick="toggleDivision(this)">
+                <span>📊 产品部</span>
+                <span class="count">5</span>
+                <span class="chevron">▶</span>
+              </div>
+              <div class="division-agents">
+                <div class="agent-mini-card" onclick="addNodeToCanvas('pm', '📊', '产品经理', 'Product', '#6366f1')">
+                  <span class="emoji">📊</span>
+                  <div>
+                    <div class="name">产品经理</div>
+                    <div class="desc">产品规划与需求管理</div>
+                  </div>
+                  <span class="add-btn">＋</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center: Canvas -->
+        <div class="canvas-area" id="canvasArea">
+          <div class="panel-expand-tab left" onclick="togglePanel('agentPanel')" title="展开角色库">▶</div>
+          <div class="panel-expand-tab right" onclick="togglePanel('configPanel')" title="展开配置面板">◀</div>
+          <div class="canvas-bg"></div>
+          <svg class="connections-svg" id="connectionsSvg"></svg>
+          <div class="canvas-content" id="canvasContent">
+            <!-- Nodes will be added here dynamically -->
+          </div>
+          <div class="canvas-empty" id="canvasEmpty">
+            <span class="icon">🏗️</span>
+            <p><strong>从左侧面板添加角色到画布</strong></p>
+            <p style="font-size:11px;">点击角色卡片或拖拽到画布中</p>
+          </div>
+
+          <!-- Canvas Toolbar -->
+          <div class="canvas-toolbar">
+            <button class="toolbar-btn" title="缩小">🔍−</button>
+            <button class="toolbar-btn" title="放大">🔍＋</button>
+            <button class="toolbar-btn" title="适应画面">⊡</button>
+            <div class="toolbar-sep"></div>
+            <button class="toolbar-btn" title="撤销">↩</button>
+            <button class="toolbar-btn" title="重做">↪</button>
+            <div class="toolbar-sep"></div>
+            <button class="toolbar-btn" title="自动布局" onclick="autoLayout()">⊞</button>
+            <button class="toolbar-btn" title="小地图">🗺</button>
+            <div class="toolbar-sep"></div>
+            <button class="toolbar-btn" title="删除选中" onclick="deleteSelected()">🗑</button>
+          </div>
+        </div>
+
+        <!-- Right: Config Panel -->
+        <div class="config-panel" id="configPanel">
+          <!-- Team config (default) -->
+          <div id="teamConfig">
+            <div class="panel-header">
+              <h3>⚙️ 团队配置</h3>
+              <button class="btn-ghost btn-sm" onclick="togglePanel('configPanel')" title="折叠">▶</button>
+            </div>
+            <div class="config-section">
+              <h4>基本信息</h4>
+              <div class="config-field">
+                <label>团队名称</label>
+                <input type="text" value="全栈开发团队" id="teamNameInput">
+              </div>
+              <div class="config-field">
+                <label>团队描述</label>
+                <textarea placeholder="描述这个团队的目标和工作方式...">覆盖前端、后端、DevOps、UI 设计和 QA 的完整开发团队，支持从需求到上线的全周期协作。</textarea>
+              </div>
+              <div class="config-field">
+                <label>标签</label>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                  <span class="badge badge-sm">开发</span>
+                  <span class="badge badge-sm">全栈</span>
+                  <span class="badge badge-sm" style="cursor:pointer;border-style:dashed;">+ 添加</span>
+                </div>
+              </div>
+            </div>
+            <div class="config-section" style="flex:1;overflow-y:auto;">
+              <h4>团队成员 (<span id="memberCount">0</span>)</h4>
+              <div class="member-list-config" id="memberList">
+                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">
+                  从左侧添加角色到画布
+                </div>
+              </div>
+            </div>
+            <div class="config-panel-footer">
+              <button class="btn btn-outline" style="width:100%;">
+                💾 保存为模板
+              </button>
+              <button class="btn btn-primary" style="width:100%;" onclick="switchPage('chat')">
+                ▶ 启动团队聊天
+              </button>
+            </div>
+          </div>
+
+          <!-- Node config (when node selected) -->
+          <div id="nodeConfig" style="display:none;">
+            <div class="panel-header">
+              <h3 id="nodeConfigTitle">🎨 UI 设计师</h3>
+              <button class="btn-ghost btn-sm" onclick="deselectNode()">✕</button>
+            </div>
+            <div class="config-section">
+              <h4>角色信息</h4>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <span style="font-size:28px;" id="nodeConfigEmoji">🎨</span>
+                <div>
+                  <div style="font-weight:600;font-size:14px;" id="nodeConfigName">UI 设计师</div>
+                  <div style="font-size:11px;color:var(--text-muted);" id="nodeConfigDivision">设计部</div>
+                </div>
+              </div>
+            </div>
+            <div class="config-section">
+              <h4>团队中的职责</h4>
+              <div class="config-field">
+                <label>任务描述</label>
+                <textarea placeholder="描述该角色在团队中的具体职责..." id="nodeRoleDesc">负责产品界面的视觉设计，包括组件库、色彩系统和交互规范的制定。</textarea>
+              </div>
+              <div class="config-field">
+                <label>执行模式</label>
+                <select>
+                  <option>并行执行</option>
+                  <option>等待依赖完成后执行</option>
+                  <option>条件触发</option>
+                </select>
+              </div>
+            </div>
+            <div class="config-section">
+              <h4>技能配置</h4>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" checked> 视觉设计系统
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" checked> 组件库架构
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" checked> 响应式设计
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox" checked> 无障碍设计
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+                  <input type="checkbox"> 动效设计
+                </label>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:100%;">+ 添加自定义技能</button>
+            </div>
+            <div class="config-section">
+              <h4>连接关系</h4>
+              <div style="font-size:12px;color:var(--text-secondary);">
+                <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+                  <span style="color:var(--cyan);">←</span> 接收自: <strong>UX 架构师</strong>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+                  <span style="color:var(--primary);">→</span> 输出到: <strong>前端开发专家</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ Page 3: Team Chat ═══════ -->
+    <div class="page" id="page-chat">
+      <div class="chat-layout">
+        <div class="chat-main">
+          <div class="chat-header">
+            <span class="back" onclick="switchPage('editor')">←</span>
+            <div class="chat-team-info">
+              <h2>
+                🚀 全栈开发团队
+                <span class="online"></span>
+              </h2>
+              <div class="members-inline">5 个成员 · 全部在线</div>
+            </div>
+            <div class="chat-members-bar">
+              <div class="chat-member-dot" style="background:rgba(6,182,212,0.2);">💻<div class="status-ring"></div></div>
+              <div class="chat-member-dot" style="background:rgba(168,85,247,0.2);">⚙️<div class="status-ring"></div></div>
+              <div class="chat-member-dot" style="background:rgba(249,115,22,0.2);">🔧<div class="status-ring"></div></div>
+              <div class="chat-member-dot" style="background:rgba(236,72,153,0.2);">🎨<div class="status-ring"></div></div>
+              <div class="chat-member-dot" style="background:rgba(16,185,129,0.2);">🧪<div class="status-ring"></div></div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="switchPage('editor')">📐 编排视图</button>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <!-- User message -->
+            <div class="chat-msg user">
+              <div class="chat-msg-avatar" style="background:var(--primary-dim);">👤</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name">你</span>
+                  <span class="chat-msg-time">14:32</span>
+                </div>
+                <div class="chat-msg-content">
+                  帮我开发一个响应式的用户仪表板，需要包含数据可视化图表、用户管理模块和实时通知功能。技术栈用 Next.js + Tailwind CSS。
+                </div>
+              </div>
+            </div>
+
+            <!-- System: Task decomposition -->
+            <div class="flow-indicator">
+              <span>🤖 Lead Agent 正在分析任务并分配给团队成员...</span>
+            </div>
+
+            <!-- Agent: UX Architect -->
+            <div class="chat-msg">
+              <div class="chat-msg-avatar" style="background:rgba(99,102,241,0.2);">🔬</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name">UX 架构师</span>
+                  <span class="chat-msg-role">设计部</span>
+                  <span class="chat-msg-time">14:33</span>
+                </div>
+                <div class="chat-msg-content">
+                  收到任务。我先进行信息架构设计：<br><br>
+                  <strong>页面结构规划：</strong><br>
+                  1. <strong>Dashboard Overview</strong> — 核心指标卡片 + 趋势图<br>
+                  2. <strong>用户管理</strong> — 表格 + 筛选 + CRUD<br>
+                  3. <strong>通知中心</strong> — 实时 WebSocket + Toast<br><br>
+                  交互规范和线框图正在输出，完成后交给 UI 设计师。
+                </div>
+              </div>
+            </div>
+
+            <!-- Flow -->
+            <div class="flow-indicator">
+              <span>🔬 UX 架构师</span>
+              <span class="arrow">→</span>
+              <span>🎨 UI 设计师</span>
+              <span style="margin-left:8px;opacity:0.5;">传递线框图和交互规范</span>
+            </div>
+
+            <!-- Agent: UI Designer -->
+            <div class="chat-msg">
+              <div class="chat-msg-avatar" style="background:rgba(236,72,153,0.2);">🎨</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name">UI 设计师</span>
+                  <span class="chat-msg-role">设计部</span>
+                  <span class="chat-msg-time">14:34</span>
+                </div>
+                <div class="chat-msg-content">
+                  收到 UX 架构师的线框图。开始视觉设计：<br><br>
+                  • 使用 <code style="background:var(--bg-input);padding:1px 4px;border-radius:3px;font-family:var(--font-mono);font-size:11px;">shadcn/ui</code> 组件库作为基础<br>
+                  • 配色方案：深色主题 + 品牌强调色<br>
+                  • 图表组件：推荐 Recharts + 自定义主题<br>
+                  • 响应式断点：移动端优先策略<br><br>
+                  设计规范正在生成，将同步给前端开发专家。
+                </div>
+              </div>
+            </div>
+
+            <!-- Flow -->
+            <div class="flow-indicator">
+              <span>🎨 UI 设计师</span>
+              <span class="arrow">→</span>
+              <span>💻 前端开发专家</span>
+              <span style="margin-left:8px;opacity:0.5;">传递设计规范和组件定义</span>
+            </div>
+
+            <!-- Agent: Frontend Dev -->
+            <div class="chat-msg">
+              <div class="chat-msg-avatar" style="background:rgba(6,182,212,0.2);">💻</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name">前端开发专家</span>
+                  <span class="chat-msg-role">工程部</span>
+                  <span class="chat-msg-time">14:35</span>
+                </div>
+                <div class="chat-msg-content">
+                  收到设计规范，开始搭建项目结构：<br><br>
+                  <div style="background:var(--bg);padding:10px;border-radius:6px;font-family:var(--font-mono);font-size:11px;margin:4px 0;line-height:1.8;">
+                    <span style="color:var(--text-muted);">📁</span> src/app/dashboard/<br>
+                    <span style="color:var(--text-muted);">├──</span> page.tsx<br>
+                    <span style="color:var(--text-muted);">├──</span> components/<br>
+                    <span style="color:var(--text-muted);">│  ├──</span> stats-cards.tsx<br>
+                    <span style="color:var(--text-muted);">│  ├──</span> trend-chart.tsx<br>
+                    <span style="color:var(--text-muted);">│  └──</span> user-table.tsx<br>
+                    <span style="color:var(--text-muted);">└──</span> hooks/use-realtime.ts
+                  </div>
+                  正在实现中...同时请 <strong>后端开发专家</strong> 准备 API 接口。
+                </div>
+              </div>
+            </div>
+
+            <!-- Agent: Backend Dev (parallel) -->
+            <div class="chat-msg">
+              <div class="chat-msg-avatar" style="background:rgba(168,85,247,0.2);">⚙️</div>
+              <div class="chat-msg-body">
+                <div class="chat-msg-header">
+                  <span class="chat-msg-name">后端开发专家</span>
+                  <span class="chat-msg-role">工程部</span>
+                  <span class="chat-msg-time">14:35</span>
+                </div>
+                <div class="chat-msg-content">
+                  并行启动 API 开发：<br><br>
+                  • <code style="background:var(--bg-input);padding:1px 4px;border-radius:3px;font-family:var(--font-mono);font-size:11px;">GET /api/dashboard/stats</code> — 统计数据<br>
+                  • <code style="background:var(--bg-input);padding:1px 4px;border-radius:3px;font-family:var(--font-mono);font-size:11px;">GET /api/users</code> — 用户列表（分页）<br>
+                  • <code style="background:var(--bg-input);padding:1px 4px;border-radius:3px;font-family:var(--font-mono);font-size:11px;">WebSocket /ws/notifications</code> — 实时通知<br><br>
+                  数据库 schema 和接口文档正在生成...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <div class="chat-input-box">
+              <input type="text" placeholder="输入任务描述，团队将自动协作...">
+              <button class="send-btn">▶</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Progress Panel -->
+        <div class="chat-progress">
+          <div class="progress-header">📊 协作进度</div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">🔬</span>
+              <span class="name">UX 架构师</span>
+              <span class="progress-status done">✓ 完成</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="check">✓</span> 信息架构设计</div>
+              <div class="progress-step"><span class="check">✓</span> 线框图输出</div>
+              <div class="progress-step"><span class="check">✓</span> 交互规范文档</div>
+            </div>
+          </div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">🎨</span>
+              <span class="name">UI 设计师</span>
+              <span class="progress-status done">✓ 完成</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="check">✓</span> 设计系统定义</div>
+              <div class="progress-step"><span class="check">✓</span> 组件规范输出</div>
+              <div class="progress-step"><span class="check">✓</span> 响应式方案</div>
+            </div>
+          </div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">💻</span>
+              <span class="name">前端开发专家</span>
+              <span class="progress-status working">⟳ 进行中</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="check">✓</span> 项目结构搭建</div>
+              <div class="progress-step"><span class="spinner"></span> 组件开发中</div>
+              <div class="progress-step"><span class="pending"></span> 图表集成</div>
+              <div class="progress-step"><span class="pending"></span> 实时通知</div>
+            </div>
+          </div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">⚙️</span>
+              <span class="name">后端开发专家</span>
+              <span class="progress-status working">⟳ 进行中</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="check">✓</span> Schema 设计</div>
+              <div class="progress-step"><span class="spinner"></span> API 开发中</div>
+              <div class="progress-step"><span class="pending"></span> WebSocket 通知</div>
+            </div>
+          </div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">🔧</span>
+              <span class="name">DevOps 工程师</span>
+              <span class="progress-status waiting">⏳ 等待中</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="pending"></span> CI/CD 配置</div>
+              <div class="progress-step"><span class="pending"></span> 部署脚本</div>
+            </div>
+          </div>
+          <div class="progress-agent">
+            <div class="progress-agent-header">
+              <span class="emoji">🧪</span>
+              <span class="name">QA 工程师</span>
+              <span class="progress-status waiting">⏳ 等待中</span>
+            </div>
+            <div class="progress-steps">
+              <div class="progress-step"><span class="pending"></span> 测试计划</div>
+              <div class="progress-step"><span class="pending"></span> 自动化测试</div>
+              <div class="progress-step"><span class="pending"></span> 验收报告</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════ AGENTS DATA ═══════ */
+const agentsDB = [
+  { id:'frontend-developer', name:'前端开发专家', emoji:'💻', division:'engineering', divLabel:'工程部', divEmoji:'💻', color:'#06b6d4', source:'local', desc:'Expert frontend developer specializing in modern web technologies, React/Vue/Angular frameworks, UI implementation, and performance optimization', vibe:'Builds blazing-fast, accessible interfaces with clean architecture.', skills:['React','TypeScript','CSS','Performance','A11y'], status:'dormant', path:'agency-agents/engineering/frontend-developer' },
+  { id:'backend-architect', name:'后端架构师', emoji:'⚙️', division:'engineering', divLabel:'工程部', divEmoji:'💻', color:'#a855f7', source:'local', desc:'Senior backend architect specializing in scalable system design, database architecture, API development, and cloud infrastructure', vibe:'Designs systems that scale gracefully under pressure.', skills:['System Design','API','Database','Cloud','Microservices'], status:'dormant', path:'agency-agents/engineering/backend-architect' },
+  { id:'devops-automator', name:'DevOps 自动化师', emoji:'🔧', division:'engineering', divLabel:'工程部', divEmoji:'💻', color:'#f97316', source:'local', desc:'Expert DevOps engineer specializing in infrastructure automation, CI/CD pipeline development, and cloud operations', vibe:'Automates everything, breaks nothing.', skills:['CI/CD','Docker','K8s','Terraform','Monitoring'], status:'running', path:'agency-agents/engineering/devops-automator' },
+  { id:'security-engineer', name:'安全工程师', emoji:'🛡️', division:'engineering', divLabel:'工程部', divEmoji:'💻', color:'#ef4444', source:'local', desc:'Expert application security engineer specializing in threat modeling, vulnerability assessment, and secure code review', vibe:'Finds vulnerabilities before attackers do.', skills:['Threat Model','Pentest','Code Audit','OWASP'], status:'dormant', path:'agency-agents/engineering/security-engineer' },
+  { id:'database-optimizer', name:'数据库优化师', emoji:'🗄️', division:'engineering', divLabel:'工程部', divEmoji:'💻', color:'#10b981', source:'local', desc:'Expert database specialist focusing on schema design, query optimization, indexing strategies, and performance tuning', vibe:'Makes queries fly and data stay consistent.', skills:['PostgreSQL','Schema','Query Opt','Index','Migration'], status:'dormant', path:'agency-agents/engineering/database-optimizer' },
+  { id:'ui-designer', name:'UI 设计师', emoji:'🎨', division:'design', divLabel:'设计部', divEmoji:'🎨', color:'#ec4899', source:'local', desc:'Expert UI designer specializing in visual design systems, component libraries, and pixel-perfect interface creation', vibe:'Creates beautiful, consistent, accessible interfaces that feel just right.', skills:['Design System','Components','Figma','A11y','Dark Mode'], status:'dormant', path:'agency-agents/design/ui-designer' },
+  { id:'ux-architect', name:'UX 架构师', emoji:'🔬', division:'design', divLabel:'设计部', divEmoji:'🎨', color:'#6366f1', source:'local', desc:'Technical architecture and UX specialist providing developers with solid foundations, CSS systems, and implementation guidance', vibe:'Bridges the gap between design vision and technical reality.', skills:['IA','Wireframes','Usability','CSS Systems'], status:'dormant', path:'agency-agents/design/ux-architect' },
+  { id:'brand-guardian', name:'品牌守护者', emoji:'✨', division:'design', divLabel:'设计部', divEmoji:'🎨', color:'#f59e0b', source:'local', desc:'Expert brand strategist and guardian specializing in brand identity development and consistency maintenance', vibe:'Keeps the brand soul alive across every touchpoint.', skills:['Brand Guide','Identity','Tone','Positioning'], status:'dormant', path:'agency-agents/design/brand-guardian' },
+  { id:'qa-engineer', name:'QA 工程师', emoji:'🧪', division:'testing', divLabel:'测试部', divEmoji:'🧪', color:'#10b981', source:'local', desc:'Quality assurance specialist with expertise in test strategy, automation frameworks, and continuous testing', vibe:'Ships quality, not just features.', skills:['Test Plan','Automation','E2E','Performance Test'], status:'dormant', path:'agency-agents/testing/qa-engineer' },
+  { id:'content-strategist', name:'内容策略师', emoji:'📝', division:'marketing', divLabel:'市场部', divEmoji:'📢', color:'#6366f1', source:'local', desc:'Content strategy expert focused on editorial planning, audience growth, and data-driven content optimization', vibe:'Turns ideas into stories that resonate and convert.', skills:['Strategy','SEO Writing','Editorial','Analytics'], status:'dormant', path:'agency-agents/marketing/content-strategist' },
+  { id:'seo-specialist', name:'SEO 专家', emoji:'🔎', division:'marketing', divLabel:'市场部', divEmoji:'📢', color:'#10b981', source:'local', desc:'Search engine optimization specialist with deep expertise in technical SEO, keyword research, and ranking strategies', vibe:'Makes your content impossible to miss on search.', skills:['Keywords','Technical SEO','Analytics','Link Building'], status:'dormant', path:'agency-agents/marketing/seo-specialist' },
+  { id:'product-manager', name:'产品经理', emoji:'📊', division:'product', divLabel:'产品部', divEmoji:'📊', color:'#6366f1', source:'local', desc:'Product management expert specializing in roadmap planning, user research, and cross-functional team coordination', vibe:'Builds products users actually want.', skills:['Roadmap','PRD','User Research','Analytics','A/B Test'], status:'dormant', path:'agency-agents/product/product-manager' },
+];
+const customAgents = [
+  { id:'nextjs-fullstack', name:'Next.js 全栈专家', emoji:'🚀', division:'custom', divLabel:'自定义', divEmoji:'📌', color:'#06b6d4', source:'custom', desc:'专注于 Next.js App Router、Server Components、Server Actions 的全栈开发专家，精通 Prisma + tRPC 技术栈', vibe:'Full-stack Next.js wizard.', skills:['Next.js','App Router','Prisma','tRPC','Tailwind'], status:'dormant', path:'custom/nextjs-fullstack' },
+  { id:'code-reviewer', name:'代码审查官', emoji:'🔍', division:'custom', divLabel:'自定义', divEmoji:'📌', color:'#a855f7', source:'custom', desc:'严格但建设性的代码审查专家，关注可维护性、安全性和性能，而非代码风格偏好', vibe:'Constructive feedback, not nitpicking.', skills:['Code Review','Best Practices','Security','Performance'], status:'running', path:'custom/code-reviewer' },
+];
+const remoteAgents = [
+  { id:'remote-translator', name:'多语言翻译助手', emoji:'🌍', division:'remote', divLabel:'远程服务', divEmoji:'🌐', color:'#f59e0b', source:'remote', desc:'远程 A2A 翻译智能体，支持 50+ 语言实时翻译，保持语境和专业术语准确性', vibe:'Speaks every language fluently.', skills:['Translation','i18n','Localization','NLP'], status:'running', path:'https://translate.agent.ai/a2a', endpoint:'https://translate.agent.ai/a2a' },
+];
+
+let currentAgentsTab = 'local';
+let currentDivFilter = 'all';
+let drawerAgentId = null;
+
+function switchAgentsTab(tab) {
+  currentAgentsTab = tab;
+  document.querySelectorAll('.agents-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.agents-tab-content').forEach(c => c.style.display = 'none');
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-' + tab).style.display = '';
+  if (tab === 'local') renderLocalAgents();
+  if (tab === 'custom') renderCustomAgents();
+  if (tab === 'remote') renderRemoteAgents();
+}
+
+function filterByDivision(div) {
+  currentDivFilter = div;
+  document.querySelectorAll('#divisionFilters .badge').forEach(b => {
+    b.style.background = b.dataset.div === div ? 'var(--primary-dim)' : '';
+    b.style.color = b.dataset.div === div ? 'var(--primary-light)' : '';
+    b.style.borderColor = b.dataset.div === div ? 'var(--primary)' : '';
+  });
+  renderLocalAgents();
+}
+
+function filterAgents() {
+  renderLocalAgents();
+}
+
+function getFilteredLocalAgents() {
+  const q = (document.getElementById('agentSearchInput')?.value || '').toLowerCase();
+  return agentsDB.filter(a => {
+    if (currentDivFilter !== 'all' && a.division !== currentDivFilter) return false;
+    if (q && !a.name.toLowerCase().includes(q) && !a.desc.toLowerCase().includes(q) && !a.skills.some(s => s.toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function renderAgentCard(a) {
+  const sourceClass = a.source === 'local' ? 'local' : a.source === 'custom' ? 'custom' : 'remote';
+  const sourceLabel = a.source === 'local' ? '本地' : a.source === 'custom' ? '自定义' : '远程';
+  const statusClass = a.status === 'running' ? 'running' : 'dormant';
+  return `
+    <div class="agent-full-card" onclick="openDrawer('${a.id}','${a.source}')">
+      <div class="afc-emoji" style="background:${a.color}20;">${a.emoji}</div>
+      <div class="afc-body">
+        <div class="afc-top">
+          <span class="afc-name">${a.name}</span>
+          <span class="afc-source ${sourceClass}">${sourceLabel}</span>
+          <div class="afc-status-dot ${statusClass}" title="${a.status}" style="margin-left:4px;"></div>
+        </div>
+        <div class="afc-division">${a.divEmoji} ${a.divLabel}${a.source==='remote' ? ' · '+a.endpoint : ''}</div>
+        <div class="afc-desc">${a.desc}</div>
+        <div class="afc-skills">${a.skills.map(s=>`<span class="badge badge-sm">${s}</span>`).join('')}</div>
+      </div>
+      <div class="afc-actions">
+        <button class="btn btn-sm ${a.status==='running'?'btn-outline':'btn-primary'}" onclick="event.stopPropagation();toggleAgentStatus('${a.id}','${a.source}')">
+          ${a.status==='running' ? '⏸ 停用' : '▶ 激活'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderLocalAgents() {
+  const list = getFilteredLocalAgents();
+  document.getElementById('agentsLocalGrid').innerHTML = list.length ? list.map(renderAgentCard).join('') :
+    '<div style="text-align:center;padding:40px;color:var(--text-muted);">未找到匹配的角色</div>';
+}
+
+function renderCustomAgents() {
+  const grid = document.getElementById('agentsCustomGrid');
+  if (customAgents.length === 0) {
+    grid.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-muted);">
+      <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">✏️</div>
+      <p style="font-size:13px;">还没有自定义智能体</p>
+      <p style="font-size:12px;margin-top:4px;">点击上方"创建自定义智能体"开始</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = customAgents.map(renderAgentCard).join('');
+}
+
+function renderRemoteAgents() {
+  const grid = document.getElementById('agentsRemoteGrid');
+  if (remoteAgents.length === 0) {
+    grid.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text-muted);">
+      <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">🌐</div>
+      <p style="font-size:13px;">还没有连接远程智能体</p>
+      <p style="font-size:12px;margin-top:4px;">输入 A2A 端点 URL 来发现和连接远程智能体</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = remoteAgents.map(renderAgentCard).join('');
+}
+
+function openDrawer(id, source) {
+  const lists = { local: agentsDB, custom: customAgents, remote: remoteAgents };
+  const agent = lists[source].find(a => a.id === id);
+  if (!agent) return;
+  drawerAgentId = { id, source };
+  document.getElementById('drawerEmoji').textContent = agent.emoji;
+  document.getElementById('drawerName').textContent = agent.name;
+  document.getElementById('drawerDivision').textContent = agent.divEmoji + ' ' + agent.divLabel;
+  document.getElementById('drawerDesc').textContent = agent.desc;
+  document.getElementById('drawerVibe').textContent = agent.vibe;
+  document.getElementById('drawerPath').textContent = agent.path;
+  document.getElementById('drawerSource').textContent = source === 'local' ? '本地' : source === 'custom' ? '自定义' : '远程';
+  document.getElementById('drawerSource').className = 'afc-source ' + (source === 'local' ? 'local' : source === 'custom' ? 'custom' : 'remote');
+  document.getElementById('drawerSkills').innerHTML = agent.skills.map(s => `<span class="badge badge-sm">${s}</span>`).join('');
+  document.getElementById('drawerActivateBtn').innerHTML = agent.status === 'running' ? '⏸ 停用' : '▶ 激活';
+  document.getElementById('drawerActivateBtn').className = 'btn ' + (agent.status === 'running' ? 'btn-outline' : 'btn-primary');
+  document.getElementById('agentDrawer').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('agentDrawer').classList.remove('open');
+  drawerAgentId = null;
+}
+
+function toggleAgentStatus(id, source) {
+  const lists = { local: agentsDB, custom: customAgents, remote: remoteAgents };
+  const agent = lists[source].find(a => a.id === id);
+  if (!agent) return;
+  agent.status = agent.status === 'running' ? 'dormant' : 'running';
+  if (currentAgentsTab === 'local') renderLocalAgents();
+  if (currentAgentsTab === 'custom') renderCustomAgents();
+  if (currentAgentsTab === 'remote') renderRemoteAgents();
+  if (drawerAgentId && drawerAgentId.id === id) openDrawer(id, source);
+}
+
+function toggleActivation() {
+  if (!drawerAgentId) return;
+  toggleAgentStatus(drawerAgentId.id, drawerAgentId.source);
+}
+
+function addToTeamFromDrawer() {
+  if (!drawerAgentId) return;
+  const lists = { local: agentsDB, custom: customAgents, remote: remoteAgents };
+  const agent = lists[drawerAgentId.source].find(a => a.id === drawerAgentId.id);
+  if (!agent) return;
+  closeDrawer();
+  switchPage('editor');
+  setTimeout(() => addNodeToCanvas(agent.id, agent.emoji, agent.name, agent.divLabel, agent.color), 100);
+}
+
+function openModal(id) { document.getElementById('modal-' + id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById('modal-' + id).classList.add('hidden'); }
+
+function createCustomAgent() {
+  const name = document.getElementById('newAgentName').value.trim();
+  const desc = document.getElementById('newAgentDesc').value.trim();
+  if (!name || !desc) { alert('请填写名称和描述'); return; }
+  const emoji = document.getElementById('newAgentEmoji').value.trim() || '🤖';
+  const division = document.getElementById('newAgentDivision').value;
+  const skillsStr = document.getElementById('newAgentSkills').value;
+  const skills = skillsStr ? skillsStr.split(',').map(s=>s.trim()).filter(Boolean) : ['Custom'];
+  const id = 'custom-' + Date.now();
+  customAgents.push({
+    id, name, emoji, division: 'custom', divLabel:'自定义', divEmoji:'📌',
+    color:'#6366f1', source:'custom', desc, vibe:'', skills, status:'dormant',
+    path: 'custom/' + id
+  });
+  document.getElementById('customCount').textContent = customAgents.length;
+  closeModal('createAgent');
+  document.getElementById('newAgentName').value = '';
+  document.getElementById('newAgentDesc').value = '';
+  document.getElementById('newAgentPrompt').value = '';
+  document.getElementById('newAgentSkills').value = '';
+  switchAgentsTab('custom');
+  document.querySelectorAll('.agents-tab')[1].click();
+}
+
+function connectRemoteAgent() {
+  const url = document.getElementById('remoteUrlInput').value.trim();
+  if (!url) { alert('请输入 A2A 端点 URL'); return; }
+  const id = 'remote-' + Date.now();
+  remoteAgents.push({
+    id, name:'远程智能体 (' + new URL(url).hostname + ')', emoji:'🌐',
+    division:'remote', divLabel:'远程服务', divEmoji:'🌐',
+    color:'#f59e0b', source:'remote',
+    desc:'通过 A2A 协议连接的远程智能体服务: ' + url,
+    vibe:'Connected via A2A protocol.',
+    skills:['A2A','Remote'], status:'running',
+    path: url, endpoint: url
+  });
+  document.getElementById('remoteCount').textContent = remoteAgents.length;
+  document.getElementById('remoteUrlInput').value = '';
+  renderRemoteAgents();
+}
+
+/* ═══════ TEAM DATA (draft vs active) ═══════ */
+let teamIdCounter = 4;
+const teamsDB = [
+  { id:1, name:'全栈开发团队', icon:'🚀', tag:'开发', tagColor:'primary', desc:'前端 + 后端 + DevOps + UI 设计 + QA，覆盖完整开发周期的高效协作团队', members:[{e:'💻',c:'rgba(6,182,212,0.2)'},{e:'⚙️',c:'rgba(168,85,247,0.2)'},{e:'🔧',c:'rgba(249,115,22,0.2)'},{e:'🎨',c:'rgba(236,72,153,0.2)'},{e:'🧪',c:'rgba(16,185,129,0.2)'}], memberCount:5, connCount:7, status:'draft', editedAt:'2 小时前' },
+  { id:2, name:'内容营销团队', icon:'📢', tag:'营销', tagColor:'orange', desc:'内容策略 + SEO + 社交媒体 + 数据分析，打造数据驱动的内容营销闭环', members:[{e:'📝',c:'rgba(99,102,241,0.2)'},{e:'🔎',c:'rgba(16,185,129,0.2)'},{e:'📱',c:'rgba(236,72,153,0.2)'},{e:'📊',c:'rgba(245,158,11,0.2)'}], memberCount:4, connCount:5, status:'active', editedAt:'昨天' },
+  { id:3, name:'产品设计团队', icon:'🎨', tag:'设计', tagColor:'purple', desc:'UX 研究 + UI 设计 + 品牌设计 + 前端开发，从用户洞察到落地实现', members:[{e:'🔬',c:'rgba(6,182,212,0.2)'},{e:'🎨',c:'rgba(168,85,247,0.2)'},{e:'✨',c:'rgba(236,72,153,0.2)'},{e:'💻',c:'rgba(99,102,241,0.2)'}], memberCount:4, connCount:4, status:'draft', editedAt:'3 天前' },
+  { id:4, name:'安全审计团队', icon:'🔒', tag:'安全', tagColor:'red', desc:'安全工程师 + 渗透测试 + 代码审计 + DevSecOps，全方位安全保障', members:[{e:'🛡️',c:'rgba(239,68,68,0.2)'},{e:'🔍',c:'rgba(245,158,11,0.2)'},{e:'📋',c:'rgba(99,102,241,0.2)'}], memberCount:3, connCount:3, status:'active', editedAt:'上周' },
+];
+
+const tagColorStyles = {
+  primary: 'border-color:var(--primary-dim);color:var(--primary-light);background:var(--primary-dim);',
+  orange: 'border-color:rgba(249,115,22,0.3);color:var(--orange);background:rgba(249,115,22,0.1);',
+  purple: 'border-color:rgba(168,85,247,0.3);color:var(--purple);background:rgba(168,85,247,0.1);',
+  red: 'border-color:rgba(239,68,68,0.3);color:var(--error);background:rgba(239,68,68,0.1);',
+  green: 'border-color:rgba(16,185,129,0.3);color:var(--success);background:rgba(16,185,129,0.1);',
+  cyan: 'border-color:rgba(6,182,212,0.3);color:var(--cyan);background:rgba(6,182,212,0.1);',
+};
+
+function renderMemberAvatars(members) {
+  return members.map(m => `<div class="member-avatar" style="background:${m.c};">${m.e}</div>`).join('');
+}
+
+function renderDraftTeams() {
+  const drafts = teamsDB.filter(t => t.status === 'draft');
+  const grid = document.getElementById('draftTeamsGrid');
+  document.getElementById('draftTeamCount').textContent = drafts.length + ' 个草稿团队';
+  let html = `<div class="team-card team-card-new" onclick="createNewTeam()">
+    <span class="plus">＋</span>
+    <span style="font-size:13px;font-weight:500;">创建新团队</span>
+    <span style="font-size:11px;">从零开始组建你的智能体团队</span>
+  </div>`;
+  drafts.forEach(t => {
+    html += `<div class="team-card">
+      <div class="team-card-header">
+        <div class="team-card-title">${t.icon} ${t.name}</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="team-status-badge draft">草稿</span>
+          <span class="tag" style="${tagColorStyles[t.tagColor]||''}">${t.tag}</span>
+        </div>
+      </div>
+      <div class="team-card-desc">${t.desc}</div>
+      <div class="team-card-members">${renderMemberAvatars(t.members)}</div>
+      <div class="team-card-meta">
+        <span>${t.memberCount} 个成员 · ${t.connCount} 条连线</span>
+        <span>${t.editedAt}</span>
+      </div>
+      <div class="team-card-actions">
+        <button class="btn btn-outline" onclick="event.stopPropagation();editTeam(${t.id})">✏️ 编辑</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();confirmDelete(${t.id})">🗑 删除</button>
+        <button class="btn btn-primary" onclick="event.stopPropagation();enableTeam(${t.id})">🚀 启用</button>
+      </div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+
+function renderExpertTeams() {
+  const active = teamsDB.filter(t => t.status === 'active');
+  const grid = document.getElementById('expertTeamsGrid');
+  document.getElementById('expertTeamCount').textContent = active.length + ' 个已启用团队';
+  if (active.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted);">
+      <div style="font-size:48px;margin-bottom:16px;opacity:0.3;">👥</div>
+      <p style="font-size:14px;font-weight:500;">还没有已启用的团队</p>
+      <p style="font-size:12px;margin-top:6px;">在团队工作室中创建并启用团队</p>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="switchPage('gallery')">前往团队工作室</button>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = active.map(t => `
+    <div class="expert-card" onclick="switchPage('chat')">
+      <div class="team-card-header">
+        <div class="team-card-title">${t.icon} ${t.name}</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="team-status-badge active">● 已启用</span>
+          <span class="tag" style="${tagColorStyles[t.tagColor]||''}">${t.tag}</span>
+        </div>
+      </div>
+      <div class="team-card-desc">${t.desc}</div>
+      <div class="team-card-members">${renderMemberAvatars(t.members)}</div>
+      <div class="team-card-meta">
+        <span>${t.memberCount} 个成员 · ${t.connCount} 条连线</span>
+        <span>${t.editedAt}</span>
+      </div>
+      <div class="expert-card-actions">
+        <button class="btn btn-primary" onclick="event.stopPropagation();switchPage('chat')" style="flex:1;">💬 进入聊天</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();editTeam(${t.id},'experts')">📐 查看详情</button>
+        <button class="btn btn-outline" onclick="event.stopPropagation();disableTeam(${t.id})">⏸ 停用</button>
+      </div>
+    </div>`).join('');
+}
+
+function enableTeam(id) {
+  const t = teamsDB.find(x => x.id === id);
+  if (t) { t.status = 'active'; renderDraftTeams(); showToast(t.icon + ' ' + t.name + ' 已启用，加入专家团队列表'); }
+}
+
+function disableTeam(id) {
+  const t = teamsDB.find(x => x.id === id);
+  if (t) { t.status = 'draft'; renderExpertTeams(); showToast(t.icon + ' ' + t.name + ' 已停用，移回团队工作室'); }
+}
+
+function editTeam(id, returnTo) {
+  editorReturnPage = returnTo || 'gallery';
+  switchPage('editor');
+}
+
+function createNewTeam() {
+  switchPage('editor');
+}
+
+let pendingDeleteId = null;
+function confirmDelete(id) {
+  pendingDeleteId = id;
+  const t = teamsDB.find(x => x.id === id);
+  document.getElementById('confirmMsg').textContent = '确定删除「' + t.name + '」？此操作不可撤销。';
+  document.getElementById('confirmBar').classList.remove('hidden');
+  document.getElementById('confirmYes').onclick = () => {
+    const idx = teamsDB.findIndex(x => x.id === id);
+    if (idx !== -1) teamsDB.splice(idx, 1);
+    hideConfirm();
+    renderDraftTeams();
+    showToast('团队已删除');
+  };
+}
+function hideConfirm() { document.getElementById('confirmBar').classList.add('hidden'); }
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 20px;font-size:13px;z-index:999;box-shadow:var(--shadow);animation:modalIn 0.2s ease-out;';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = '0.3s'; setTimeout(() => el.remove(), 300); }, 2000);
+}
+
+/* ═══════ CANVAS EDITOR DATA ═══════ */
+const nodes = [];
+let selectedNodeId = null;
+let nodeIdCounter = 0;
+
+const colorMap = {
+  '#06b6d4': 'linear-gradient(90deg, #06b6d4, #0891b2)',
+  '#a855f7': 'linear-gradient(90deg, #a855f7, #9333ea)',
+  '#f97316': 'linear-gradient(90deg, #f97316, #ea580c)',
+  '#ef4444': 'linear-gradient(90deg, #ef4444, #dc2626)',
+  '#10b981': 'linear-gradient(90deg, #10b981, #059669)',
+  '#ec4899': 'linear-gradient(90deg, #ec4899, #db2777)',
+  '#6366f1': 'linear-gradient(90deg, #6366f1, #4f46e5)',
+  '#f59e0b': 'linear-gradient(90deg, #f59e0b, #d97706)',
+};
+
+const skillMap = {
+  'frontend-dev': ['React', 'TypeScript', 'CSS'],
+  'backend-dev': ['API Design', 'Database', 'Auth'],
+  'devops': ['CI/CD', 'Docker', 'K8s'],
+  'security': ['Threat Model', 'Audit', 'Pentest'],
+  'db-opt': ['Schema', 'Query Opt', 'Index'],
+  'ui-designer': ['Design System', 'Components', 'A11y'],
+  'ux-arch': ['IA', 'Wireframes', 'Usability'],
+  'brand': ['Brand Guide', 'Identity', 'Tone'],
+  'qa': ['Test Plan', 'Automation', 'QA'],
+  'content': ['Strategy', 'SEO Writing', 'Editorial'],
+  'seo': ['Keywords', 'Analytics', 'Technical SEO'],
+  'scrum': ['Sprint', 'Retro', 'Velocity'],
+  'pm': ['Roadmap', 'PRD', 'Analytics'],
+  'nextjs-fullstack': ['Next.js', 'Prisma', 'tRPC'],
+  'code-reviewer': ['Review', 'Security', 'Perf'],
+  'remote-translator': ['Translation', 'i18n', 'NLP'],
+};
+
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const labels = { agents:'智能体管理', experts:'专家团队', gallery:'团队工作室', editor:'画布编排器', chat:'团队聊天' };
+  document.getElementById('viewLabel').textContent = labels[page] || '';
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  const navMap = { agents:'nav-agents', experts:'nav-experts', gallery:'nav-teams', editor:'nav-teams', chat:'nav-experts' };
+  const nav = document.getElementById(navMap[page]);
+  if (nav) nav.classList.add('active');
+  if (page === 'agents') renderLocalAgents();
+  if (page === 'gallery') renderDraftTeams();
+  if (page === 'experts') renderExpertTeams();
+  if (page === 'editor' && nodes.length === 0) loadDemoNodes();
+  closeDrawer();
+  hideConfirm();
+}
+
+function toggleDivision(el) {
+  el.parentElement.classList.toggle('open');
+}
+
+function togglePanel(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+let editorReturnPage = 'gallery';
+function goBackFromEditor() {
+  switchPage(editorReturnPage);
+}
+
+function addNodeToCanvas(agentId, emoji, name, role, color) {
+  const existing = nodes.find(n => n.agentId === agentId);
+  if (existing) return;
+
+  document.getElementById('canvasEmpty').style.display = 'none';
+  const id = 'node-' + (++nodeIdCounter);
+  const x = 100 + Math.random() * 400;
+  const y = 60 + Math.random() * 300;
+  const skills = skillMap[agentId] || ['Skill 1', 'Skill 2'];
+  const node = { id, agentId, emoji, name, role, color, x, y, skills };
+  nodes.push(node);
+  renderNode(node);
+  updateMemberList();
+}
+
+function renderNode(node) {
+  const el = document.createElement('div');
+  el.className = 'canvas-node';
+  el.id = node.id;
+  el.style.left = node.x + 'px';
+  el.style.top = node.y + 'px';
+  el.innerHTML = `
+    <div class="node-color-bar" style="background:${colorMap[node.color] || node.color}"></div>
+    <div class="node-body">
+      <div class="node-top">
+        <span class="node-emoji">${node.emoji}</span>
+        <span class="node-title">${node.name}</span>
+        <span class="node-close" onclick="event.stopPropagation();removeNode('${node.id}')">✕</span>
+      </div>
+      <div class="node-desc">${node.role}</div>
+      <div class="node-skills">
+        ${node.skills.map(s => `<span class="node-skill-tag">${s}</span>`).join('')}
+      </div>
+    </div>
+    <div class="node-handle input" data-node="${node.id}" data-type="input"></div>
+    <div class="node-handle output" data-node="${node.id}" data-type="output"></div>
+  `;
+  el.addEventListener('mousedown', (e) => startDrag(e, node));
+  el.addEventListener('click', (e) => { e.stopPropagation(); selectNode(node.id); });
+  document.getElementById('canvasContent').appendChild(el);
+}
+
+function removeNode(id) {
+  const idx = nodes.findIndex(n => n.id === id);
+  if (idx !== -1) nodes.splice(idx, 1);
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  if (selectedNodeId === id) deselectNode();
+  updateMemberList();
+  drawConnections();
+  if (nodes.length === 0) document.getElementById('canvasEmpty').style.display = 'flex';
+}
+
+function selectNode(id) {
+  document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('selected'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('selected');
+  selectedNodeId = id;
+  const node = nodes.find(n => n.id === id);
+  if (!node) return;
+  document.getElementById('teamConfig').style.display = 'none';
+  document.getElementById('nodeConfig').style.display = 'block';
+  document.getElementById('nodeConfigTitle').textContent = node.emoji + ' ' + node.name;
+  document.getElementById('nodeConfigEmoji').textContent = node.emoji;
+  document.getElementById('nodeConfigName').textContent = node.name;
+  document.getElementById('nodeConfigDivision').textContent = node.role;
+}
+
+function deselectNode() {
+  document.querySelectorAll('.canvas-node').forEach(n => n.classList.remove('selected'));
+  selectedNodeId = null;
+  document.getElementById('teamConfig').style.display = 'block';
+  document.getElementById('nodeConfig').style.display = 'none';
+}
+
+function updateMemberList() {
+  const list = document.getElementById('memberList');
+  document.getElementById('memberCount').textContent = nodes.length;
+  if (nodes.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px;">从左侧添加角色到画布</div>';
+    return;
+  }
+  list.innerHTML = nodes.map(n => `
+    <div class="member-item">
+      <span class="emoji">${n.emoji}</span>
+      <span class="name">${n.name}</span>
+      <span class="remove" onclick="removeNode('${n.id}')">✕</span>
+    </div>
+  `).join('');
+}
+
+// Dragging
+let dragNode = null, dragOffsetX = 0, dragOffsetY = 0;
+function startDrag(e, node) {
+  if (e.target.classList.contains('node-close') || e.target.classList.contains('node-handle')) return;
+  dragNode = node;
+  const el = document.getElementById(node.id);
+  const rect = el.getBoundingClientRect();
+  dragOffsetX = e.clientX - rect.left;
+  dragOffsetY = e.clientY - rect.top;
+  el.style.zIndex = 100;
+}
+document.addEventListener('mousemove', (e) => {
+  if (!dragNode) return;
+  const canvas = document.getElementById('canvasArea').getBoundingClientRect();
+  const x = e.clientX - canvas.left - dragOffsetX;
+  const y = e.clientY - canvas.top - dragOffsetY;
+  dragNode.x = Math.max(0, x);
+  dragNode.y = Math.max(0, y);
+  const el = document.getElementById(dragNode.id);
+  el.style.left = dragNode.x + 'px';
+  el.style.top = dragNode.y + 'px';
+  drawConnections();
+});
+document.addEventListener('mouseup', () => {
+  if (dragNode) {
+    const el = document.getElementById(dragNode.id);
+    if (el) el.style.zIndex = '';
+  }
+  dragNode = null;
+});
+
+// Connections (demo)
+const demoConnections = [];
+function addConnection(sourceId, targetId) {
+  demoConnections.push({ source: sourceId, target: targetId });
+}
+function drawConnections() {
+  const svg = document.getElementById('connectionsSvg');
+  const canvas = document.getElementById('canvasArea').getBoundingClientRect();
+  svg.innerHTML = '';
+  svg.setAttribute('width', canvas.width);
+  svg.setAttribute('height', canvas.height);
+  demoConnections.forEach(conn => {
+    const srcNode = nodes.find(n => n.agentId === conn.source);
+    const tgtNode = nodes.find(n => n.agentId === conn.target);
+    if (!srcNode || !tgtNode) return;
+    const srcEl = document.getElementById(srcNode.id);
+    const tgtEl = document.getElementById(tgtNode.id);
+    if (!srcEl || !tgtEl) return;
+    const x1 = srcNode.x + 220;
+    const y1 = srcNode.y + srcEl.offsetHeight / 2;
+    const x2 = tgtNode.x;
+    const y2 = tgtNode.y + tgtEl.offsetHeight / 2;
+    const cx = (x1 + x2) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`);
+    path.setAttribute('class', 'connection-path active');
+    path.setAttribute('marker-end', 'url(#arrowhead)');
+    svg.appendChild(path);
+  });
+  if (demoConnections.length > 0) {
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = `<marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6366f1" opacity="0.7"/>
+    </marker>`;
+    svg.prepend(defs);
+  }
+}
+
+function autoLayout() {
+  const startX = 80, startY = 60, colWidth = 260, rowHeight = 160;
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  nodes.forEach((node, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    node.x = startX + col * colWidth;
+    node.y = startY + row * rowHeight;
+    const el = document.getElementById(node.id);
+    el.style.transition = 'left 0.4s ease, top 0.4s ease';
+    el.style.left = node.x + 'px';
+    el.style.top = node.y + 'px';
+    setTimeout(() => el.style.transition = '', 500);
+  });
+  setTimeout(drawConnections, 450);
+}
+
+function deleteSelected() {
+  if (selectedNodeId) removeNode(selectedNodeId);
+}
+
+function loadDemoNodes() {
+  addNodeToCanvas('ux-arch', '🔬', 'UX 架构师', 'UX · 设计部', '#6366f1');
+  addNodeToCanvas('ui-designer', '🎨', 'UI 设计师', 'UI · 设计部', '#ec4899');
+  addNodeToCanvas('frontend-dev', '💻', '前端开发专家', 'Frontend · 工程部', '#06b6d4');
+  addNodeToCanvas('backend-dev', '⚙️', '后端开发专家', 'Backend · 工程部', '#a855f7');
+  addNodeToCanvas('devops', '🔧', 'DevOps 工程师', 'DevOps · 工程部', '#f97316');
+  addNodeToCanvas('qa', '🧪', 'QA 工程师', 'QA · 测试部', '#10b981');
+
+  addConnection('ux-arch', 'ui-designer');
+  addConnection('ui-designer', 'frontend-dev');
+  addConnection('frontend-dev', 'backend-dev');
+  addConnection('backend-dev', 'devops');
+  addConnection('frontend-dev', 'qa');
+  addConnection('backend-dev', 'qa');
+
+  setTimeout(() => {
+    nodes[0].x = 60; nodes[0].y = 120;
+    nodes[1].x = 320; nodes[1].y = 60;
+    nodes[2].x = 580; nodes[2].y = 40;
+    nodes[3].x = 580; nodes[3].y = 220;
+    nodes[4].x = 840; nodes[4].y = 220;
+    nodes[5].x = 840; nodes[5].y = 40;
+    nodes.forEach(n => {
+      const el = document.getElementById(n.id);
+      el.style.left = n.x + 'px';
+      el.style.top = n.y + 'px';
+    });
+    drawConnections();
+  }, 50);
+}
+
+document.getElementById('canvasArea').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget || e.target.classList.contains('canvas-bg') || e.target.classList.contains('canvas-content')) {
+    deselectNode();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedNodeId && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+      removeNode(selectedNodeId);
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -239,6 +239,8 @@ You: "Deploying to staging..." [proceed]
 
 {subagent_section}
 
+{agency_agents_section}
+
 <working_directory existed="true">
 - User uploads: `/mnt/user-data/uploads` - Files uploaded by the user (automatically listed in context)
 - User workspace: `/mnt/user-data/workspace` - Working directory for temporary files
@@ -445,6 +447,58 @@ def get_deferred_tools_prompt_section() -> str:
     return f"<available-deferred-tools>\n{names}\n</available-deferred-tools>"
 
 
+def _build_agency_agents_section() -> str:
+    """Build the agency-agents specialist roster section for the system prompt.
+
+    Lists available agency-agents roles so the Lead Agent can select
+    and delegate to the right specialist via the task() tool.
+    """
+    try:
+        from deerflow.agency.registry.agency_registry import get_agency_registry
+        registry = get_agency_registry()
+        if not registry.is_loaded:
+            return ""
+    except Exception:
+        return ""
+
+    agents = registry.list_agents()
+    if not agents:
+        return ""
+
+    lines = [
+        "<agency_specialists>",
+        "**Agency-Agents 专家团队可用。** 当任务需要特定领域专家时，你可以通过 `task()` 调用委派给以下专家角色。",
+        "总监可根据用户任务自动选择合适的角色组合，通过 task() 并行分配子任务。",
+        "",
+        "**可用角色：**",
+    ]
+
+    by_division: dict[str, list] = {}
+    for a in agents:
+        base_div = a.division.split("/")[0]
+        by_division.setdefault(base_div, []).append(a)
+
+    for div, div_agents in sorted(by_division.items()):
+        div_label = div_agents[0].division_label if div_agents else div
+        div_emoji = div_agents[0].division_emoji if div_agents else ""
+        lines.append(f"\n{div_emoji} **{div_label}** ({len(div_agents)} 个角色):")
+        for a in div_agents[:8]:
+            tags = ", ".join(s.name for s in a.core_skills[:3])
+            status_icon = "🟢" if a.status.value == "running" else "⚪"
+            lines.append(f"  {status_icon} `{a.id}` — {a.name}: {a.description[:80]}")
+            if tags:
+                lines.append(f"    技能: {tags}")
+        if len(div_agents) > 8:
+            lines.append(f"  ... 还有 {len(div_agents) - 8} 个角色")
+
+    lines.append("")
+    lines.append("**调用方式：** 在 task() 的 prompt 中指定 `请以 {agent_id} 角色身份完成以下任务：...`")
+    lines.append("**注意：** 角色会按需自动实例化，无需手动激活。")
+    lines.append("</agency_specialists>")
+
+    return "\n".join(lines)
+
+
 def _build_acp_section() -> str:
     """Build the ACP agent prompt section, only if ACP agents are configured."""
     try:
@@ -500,6 +554,9 @@ def apply_prompt_template(subagent_enabled: bool = False, max_concurrent_subagen
     # Build ACP agent section only if ACP agents are configured
     acp_section = _build_acp_section()
 
+    # Build agency-agents specialist roster
+    agency_agents_section = _build_agency_agents_section()
+
     # Format the prompt with dynamic skills and memory
     prompt = SYSTEM_PROMPT_TEMPLATE.format(
         agent_name=agent_name or "DeerFlow 2.0",
@@ -511,6 +568,7 @@ def apply_prompt_template(subagent_enabled: bool = False, max_concurrent_subagen
         subagent_reminder=subagent_reminder,
         subagent_thinking=subagent_thinking,
         acp_section=acp_section,
+        agency_agents_section=agency_agents_section,
     )
 
     return prompt + f"\n<current_date>{datetime.now().strftime('%Y-%m-%d, %A')}</current_date>"

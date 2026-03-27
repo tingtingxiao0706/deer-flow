@@ -17,6 +17,17 @@ router = APIRouter(prefix="/api", tags=["agents"])
 AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 
 
+class CustomSkillResponse(BaseModel):
+    """Response model for a user-defined custom skill."""
+
+    id: str
+    name: str
+    description: str = ""
+    tools: list[str] = []
+    references: list[str] = []
+    examples: list[str] = []
+
+
 class AgentResponse(BaseModel):
     """Response model for a custom agent."""
 
@@ -24,6 +35,10 @@ class AgentResponse(BaseModel):
     description: str = Field(default="", description="Agent description")
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
+    emoji: str = Field(default="🤖", description="Display emoji")
+    color: str = Field(default="indigo", description="Theme color key")
+    tags: list[str] = Field(default_factory=list, description="Skill tags")
+    custom_skills: list[CustomSkillResponse] = Field(default_factory=list, description="User-defined skills")
     soul: str | None = Field(default=None, description="SOUL.md content (included on GET /{name})")
 
 
@@ -33,6 +48,17 @@ class AgentsListResponse(BaseModel):
     agents: list[AgentResponse]
 
 
+class CustomSkillRequest(BaseModel):
+    """Request body for a user-defined custom skill."""
+
+    id: str = ""
+    name: str
+    description: str = ""
+    tools: list[str] = []
+    references: list[str] = []
+    examples: list[str] = []
+
+
 class AgentCreateRequest(BaseModel):
     """Request body for creating a custom agent."""
 
@@ -40,6 +66,10 @@ class AgentCreateRequest(BaseModel):
     description: str = Field(default="", description="Agent description")
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
+    emoji: str = Field(default="🤖", description="Display emoji")
+    color: str = Field(default="indigo", description="Theme color key")
+    tags: list[str] = Field(default_factory=list, description="Skill tags")
+    custom_skills: list[CustomSkillRequest] = Field(default_factory=list, description="User-defined skills")
     soul: str = Field(default="", description="SOUL.md content — agent personality and behavioral guardrails")
 
 
@@ -49,6 +79,10 @@ class AgentUpdateRequest(BaseModel):
     description: str | None = Field(default=None, description="Updated description")
     model: str | None = Field(default=None, description="Updated model override")
     tool_groups: list[str] | None = Field(default=None, description="Updated tool group whitelist")
+    emoji: str | None = Field(default=None, description="Updated emoji")
+    color: str | None = Field(default=None, description="Updated color")
+    tags: list[str] | None = Field(default=None, description="Updated tags")
+    custom_skills: list[CustomSkillRequest] | None = Field(default=None, description="Updated custom skills")
     soul: str | None = Field(default=None, description="Updated SOUL.md content")
 
 
@@ -84,6 +118,16 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
         description=agent_cfg.description,
         model=agent_cfg.model,
         tool_groups=agent_cfg.tool_groups,
+        emoji=agent_cfg.emoji,
+        color=agent_cfg.color,
+        tags=agent_cfg.tags,
+        custom_skills=[
+            CustomSkillResponse(
+                id=s.id, name=s.name, description=s.description,
+                tools=s.tools, references=s.references, examples=s.examples,
+            )
+            for s in agent_cfg.custom_skills
+        ],
         soul=soul,
     )
 
@@ -200,6 +244,18 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
             config_data["model"] = request.model
         if request.tool_groups is not None:
             config_data["tool_groups"] = request.tool_groups
+        if request.emoji and request.emoji != "🤖":
+            config_data["emoji"] = request.emoji
+        if request.color and request.color != "indigo":
+            config_data["color"] = request.color
+        if request.tags:
+            config_data["tags"] = request.tags
+        if request.custom_skills:
+            config_data["custom_skills"] = [
+                {"id": s.id or s.name, "name": s.name, "description": s.description,
+                 "tools": s.tools, "references": s.references, "examples": s.examples}
+                for s in request.custom_skills
+            ]
 
         config_file = agent_dir / "config.yaml"
         with open(config_file, "w", encoding="utf-8") as f:
@@ -255,7 +311,11 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
 
     try:
         # Update config if any config fields changed
-        config_changed = any(v is not None for v in [request.description, request.model, request.tool_groups])
+        config_changed = any(
+            v is not None
+            for v in [request.description, request.model, request.tool_groups,
+                       request.emoji, request.color, request.tags, request.custom_skills]
+        )
 
         if config_changed:
             updated: dict = {
@@ -269,6 +329,30 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
             new_tool_groups = request.tool_groups if request.tool_groups is not None else agent_cfg.tool_groups
             if new_tool_groups is not None:
                 updated["tool_groups"] = new_tool_groups
+
+            new_emoji = request.emoji if request.emoji is not None else agent_cfg.emoji
+            if new_emoji and new_emoji != "🤖":
+                updated["emoji"] = new_emoji
+
+            new_color = request.color if request.color is not None else agent_cfg.color
+            if new_color and new_color != "indigo":
+                updated["color"] = new_color
+
+            new_tags = request.tags if request.tags is not None else agent_cfg.tags
+            if new_tags:
+                updated["tags"] = new_tags
+
+            new_skills = request.custom_skills if request.custom_skills is not None else agent_cfg.custom_skills
+            if new_skills:
+                updated["custom_skills"] = [
+                    {"id": s.id if hasattr(s, "id") else (s.name if hasattr(s, "name") else s.get("id", "")),
+                     "name": s.name if hasattr(s, "name") else s.get("name", ""),
+                     "description": s.description if hasattr(s, "description") else s.get("description", ""),
+                     "tools": s.tools if hasattr(s, "tools") else s.get("tools", []),
+                     "references": s.references if hasattr(s, "references") else s.get("references", []),
+                     "examples": s.examples if hasattr(s, "examples") else s.get("examples", [])}
+                    for s in new_skills
+                ]
 
             config_file = agent_dir / "config.yaml"
             with open(config_file, "w", encoding="utf-8") as f:
@@ -350,6 +434,103 @@ async def update_user_profile(request: UserProfileUpdateRequest) -> UserProfileR
     except Exception as e:
         logger.error(f"Failed to update user profile: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update user profile: {str(e)}")
+
+
+class RemoteProxyRequest(BaseModel):
+    """Request body for creating a proxy agent for a remote A2A endpoint."""
+
+    endpoint: str = Field(..., description="Remote A2A agent base URL")
+    agent_name: str = Field(default="", description="Override name (auto-generated from endpoint if empty)")
+    description: str = Field(default="", description="Description of the remote agent")
+
+
+class RemoteProxyResponse(BaseModel):
+    """Response after creating a remote proxy agent."""
+
+    name: str
+    endpoint: str
+    description: str
+    status: str = "created"
+
+
+@router.post(
+    "/agents/remote-proxy",
+    response_model=RemoteProxyResponse,
+    status_code=201,
+    summary="Create Remote Proxy Agent",
+    description="Create a local proxy agent that relays messages to a remote A2A endpoint.",
+)
+async def create_remote_proxy(request: RemoteProxyRequest) -> RemoteProxyResponse:
+    """Create a proxy agent for a remote A2A-compatible agent.
+
+    The proxy uses the a2a_relay tool to forward messages to the remote endpoint.
+    """
+    import re as _re
+
+    endpoint = request.endpoint.rstrip("/")
+    if not endpoint:
+        raise HTTPException(status_code=422, detail="endpoint is required")
+
+    proxy_name = request.agent_name
+    if not proxy_name:
+        host_part = endpoint.split("://")[-1].split("/")[0].split(":")[0]
+        proxy_name = f"remote-{_re.sub(r'[^a-z0-9]', '-', host_part.lower())}"
+
+    _validate_agent_name(proxy_name)
+    proxy_name = _normalize_agent_name(proxy_name)
+
+    agent_dir = get_paths().agent_dir(proxy_name)
+    if agent_dir.exists():
+        return RemoteProxyResponse(
+            name=proxy_name,
+            endpoint=endpoint,
+            description=request.description,
+            status="exists",
+        )
+
+    try:
+        agent_dir.mkdir(parents=True, exist_ok=True)
+
+        config_data: dict = {
+            "name": proxy_name,
+            "description": request.description or f"Remote A2A proxy for {endpoint}",
+            "emoji": "🌐",
+            "color": "green",
+            "tags": ["remote", "a2a"],
+            "a2a_endpoint": endpoint,
+        }
+        config_file = agent_dir / "config.yaml"
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
+
+        soul_content = (
+            f"# {proxy_name}\n\n"
+            f"You are a relay agent. Your job is to faithfully forward user messages "
+            f"to the remote A2A agent at `{endpoint}` using the `a2a_relay` tool, "
+            f"and return the remote agent's responses to the user.\n\n"
+            f"## Rules\n"
+            f"- Always use the `a2a_relay` tool to communicate with the remote agent.\n"
+            f"- Do not add your own commentary unless the user explicitly asks.\n"
+            f"- Pass through the remote agent's response as-is.\n"
+            f"- If the remote agent fails, inform the user of the error.\n"
+        )
+        soul_file = agent_dir / "SOUL.md"
+        soul_file.write_text(soul_content, encoding="utf-8")
+
+        logger.info(f"Created remote proxy agent '{proxy_name}' for {endpoint}")
+        return RemoteProxyResponse(
+            name=proxy_name,
+            endpoint=endpoint,
+            description=request.description or f"Remote A2A proxy for {endpoint}",
+            status="created",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if agent_dir.exists():
+            shutil.rmtree(agent_dir)
+        logger.error(f"Failed to create remote proxy: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create proxy: {str(e)}")
 
 
 @router.delete(

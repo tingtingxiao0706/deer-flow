@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.gateway.config import get_gateway_config
 from app.gateway.routers import (
+    agency,
     agents,
     artifacts,
     channels,
@@ -14,6 +15,7 @@ from app.gateway.routers import (
     models,
     skills,
     suggestions,
+    teams,
     threads,
     uploads,
 )
@@ -48,6 +50,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 1. Gateway doesn't use MCP tools - they are used by Agents in the LangGraph Server
     # 2. Gateway and LangGraph Server are separate processes with independent caches
     # MCP tools are lazily initialized in LangGraph Server when first needed
+
+    # Load TeamRegistry from disk
+    try:
+        from deerflow.agency.registry.team_registry import get_team_registry
+        from deerflow.config.paths import get_paths
+
+        team_registry = get_team_registry()
+        teams_dir = get_paths().teams_dir
+        count = team_registry.load(teams_dir)
+        logger.info(f"TeamRegistry loaded {count} teams from {teams_dir}")
+    except Exception:
+        logger.exception("Failed to load TeamRegistry")
 
     # Start IM channel service if any channels are configured
     try:
@@ -141,6 +155,14 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
                 "description": "Generate follow-up question suggestions for conversations",
             },
             {
+                "name": "agency-agents",
+                "description": "Agency-Agents 角色目录：查询、搜索、激活、自定义技能管理",
+            },
+            {
+                "name": "teams",
+                "description": "团队工作室：团队的增删改查、启用/停用、编排和聊天",
+            },
+            {
                 "name": "channels",
                 "description": "Manage IM channel integrations (Feishu, Slack, Telegram)",
             },
@@ -180,6 +202,12 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)
+
+    # Agency-Agents API is mounted at /api/agency
+    app.include_router(agency.router)
+
+    # Teams API is mounted at /api/teams
+    app.include_router(teams.router)
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
