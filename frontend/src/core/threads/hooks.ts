@@ -16,6 +16,7 @@ import { useUpdateSubtask } from "../tasks/context";
 import type { UploadedFileInfo } from "../uploads";
 import { uploadFiles } from "../uploads";
 
+import { unregisterTeamThread } from "./team-thread-links";
 import type { AgentThread, AgentThreadState } from "./types";
 
 export type ToolEndEvent = {
@@ -482,6 +483,7 @@ export function useDeleteThread() {
   return useMutation({
     mutationFn: async ({ threadId }: { threadId: string }) => {
       await apiClient.threads.delete(threadId);
+      unregisterTeamThread(threadId);
 
       const response = await fetch(
         `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}`,

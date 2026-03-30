@@ -128,3 +128,33 @@ src/
 ## License
 
 MIT License. See [LICENSE](../LICENSE) for details.
+
+不依赖 make：手动启动（适合 Windows）
+前提（与 README 一致）：
+
+项目根目录有 config.yaml（可从 config.example.yaml 复制）。
+已安装 Python 3.12+、uv、Node 22+、pnpm。
+在 config.yaml / 环境里配好模型用的 API Key（如 OPENAI_API_KEY）。
+在三个终端里分别从仓库根目录执行：
+
+终端 1 — LangGraph
+
+cd backend
+uv run langgraph dev --no-browser --allow-blocking --no-reload
+终端 2 — Gateway
+
+PowerShell：
+
+cd backend
+$env:PYTHONPATH = "."
+uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 --reload
+终端 3 — 前端
+
+cd frontend
+pnpm install   # 只需第一次
+pnpm dev
+此时没有 Nginx 时，请用前端直连后端，在 frontend/.env（或 .env.local）里把地址指到本机（与 frontend/README.md 一致），例如：
+
+NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
+NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:2024
+然后浏览器打开：**http://localhost:3000**（工作区路由仍是 /workspace/...）。

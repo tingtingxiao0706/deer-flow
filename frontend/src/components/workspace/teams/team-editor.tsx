@@ -29,8 +29,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import type { AgencyAgentCard } from "@/core/agency/types";
 import { useAgencyAgents } from "@/core/agency/hooks";
+import type { AgencyAgentCard } from "@/core/agency/types";
 import { useAgents } from "@/core/agents";
 import type { TeamDefinition, TeamMember } from "@/core/teams";
 import { useUpdateTeam } from "@/core/teams";
@@ -62,6 +62,28 @@ interface CanvasNode {
 interface Connection {
   source: string;
   target: string;
+}
+
+interface EditorSnapshot {
+  nodes: CanvasNode[];
+  connections: Connection[];
+}
+
+const DEFAULT_CARD_HEIGHT = 140;
+const CARD_WIDTH = 220;
+
+function connectionPathD(
+  srcNode: CanvasNode,
+  tgtNode: CanvasNode,
+  srcH: number,
+  tgtH: number,
+): string {
+  const x1 = srcNode.x + CARD_WIDTH;
+  const y1 = srcNode.y + srcH / 2;
+  const x2 = tgtNode.x;
+  const y2 = tgtNode.y + tgtH / 2;
+  const cx = (x1 + x2) / 2;
+  return `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
 }
 
 interface CatalogDivision {
@@ -199,110 +221,196 @@ export function TeamEditor({ team }: TeamEditorProps) {
     team.connections.map((c) => ({ source: c.fromAgent, target: c.toAgent })),
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Connection | null>(null);
   const [nodeIdCounter, setNodeIdCounter] = useState(team.members.length);
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [renderVersion, setRenderVersion] = useState(0);
+  const [undoStack, setUndoStack] = useState<EditorSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<EditorSnapshot[]>([]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     node: CanvasNode;
     offsetX: number;
     offsetY: number;
+    startX: number;
+    startY: number;
   } | null>(null);
+
+  const nodesRef = useRef(nodes);
+  const connectionsRef = useRef(connections);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
 
   // Connection drawing state
   const connectingRef = useRef<{
     sourceAgentId: string;
     sourceNodeId: string;
-    mouseX: number;
-    mouseY: number;
   } | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectPreview, setConnectPreview] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId),
     [nodes, selectedNodeId],
   );
 
-  // ── Drawing connections ──────────────────────────────────────────
+  const pushUndo = useCallback(() => {
+    setUndoStack((s) => [
+      ...s.slice(-49),
+      {
+        nodes: structuredClone(nodesRef.current),
+        connections: connectionsRef.current.map((c) => ({ ...c })),
+      },
+    ]);
+    setRedoStack([]);
+  }, []);
 
-  const drawConnections = useCallback(() => {
-    const svg = svgRef.current;
-    const canvas = canvasRef.current;
-    if (!svg || !canvas) return;
+  const undo = useCallback(() => {
+    setUndoStack((s) => {
+      if (s.length === 0) return s;
+      const top = s[s.length - 1]!;
+      const snapshot: EditorSnapshot = {
+        nodes: structuredClone(nodesRef.current),
+        connections: connectionsRef.current.map((c) => ({ ...c })),
+      };
+      setRedoStack((r) => [...r, snapshot]);
+      setNodes(top.nodes);
+      setConnections(top.connections);
+      setSelectedNodeId(null);
+      setSelectedEdge(null);
+      return s.slice(0, -1);
+    });
+  }, []);
 
-    const rect = canvas.getBoundingClientRect();
-    svg.setAttribute("width", String(rect.width));
-    svg.setAttribute("height", String(rect.height));
+  const redo = useCallback(() => {
+    setRedoStack((r) => {
+      if (r.length === 0) return r;
+      const top = r[r.length - 1]!;
+      const snapshot: EditorSnapshot = {
+        nodes: structuredClone(nodesRef.current),
+        connections: connectionsRef.current.map((c) => ({ ...c })),
+      };
+      setUndoStack((s) => [...s.slice(-49), snapshot]);
+      setNodes(top.nodes);
+      setConnections(top.connections);
+      setSelectedNodeId(null);
+      setSelectedEdge(null);
+      return r.slice(0, -1);
+    });
+  }, []);
 
-    let paths = `<defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#6366f1" opacity="0.7"/></marker></defs>`;
-    connections.forEach((conn) => {
+  const contentBounds = useMemo(() => {
+    const pad = 120;
+    if (nodes.length === 0) return { w: 1600, h: 900 };
+    let mx = 480;
+    let my = 400;
+    for (const n of nodes) {
+      mx = Math.max(mx, n.x + CARD_WIDTH + pad);
+      my = Math.max(my, n.y + DEFAULT_CARD_HEIGHT + pad);
+    }
+    return { w: mx, h: my };
+  }, [nodes]);
+
+  const clientToCanvas = useCallback(
+    (clientX: number, clientY: number) => {
+      const scroll = scrollRef.current;
+      if (!scroll) return { x: 0, y: 0 };
+      const br = scroll.getBoundingClientRect();
+      const z = canvasZoom;
+      return {
+        x: (clientX - br.left + scroll.scrollLeft) / z,
+        y: (clientY - br.top + scroll.scrollTop) / z,
+      };
+    },
+    [canvasZoom],
+  );
+
+  const connectionPaths = useMemo(() => {
+    void renderVersion;
+    const list: {
+      conn: Connection;
+      d: string;
+      srcNode: CanvasNode;
+      tgtNode: CanvasNode;
+    }[] = [];
+    for (const conn of connections) {
       const srcNode = nodes.find((n) => n.agentId === conn.source);
       const tgtNode = nodes.find((n) => n.agentId === conn.target);
-      if (!srcNode || !tgtNode) return;
-      const srcEl = document.getElementById(srcNode.id);
-      const tgtEl = document.getElementById(tgtNode.id);
-      if (!srcEl || !tgtEl) return;
-      const x1 = srcNode.x + 220;
-      const y1 = srcNode.y + srcEl.offsetHeight / 2;
-      const x2 = tgtNode.x;
-      const y2 = tgtNode.y + tgtEl.offsetHeight / 2;
-      const cx = (x1 + x2) / 2;
-      paths += `<path d="M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.6" marker-end="url(#ah)"/>`;
-    });
-
-    // Draw temporary connection line while dragging from a handle
-    const conn = connectingRef.current;
-    if (conn) {
-      const srcNode = nodes.find((n) => n.id === conn.sourceNodeId);
-      if (srcNode) {
+      if (!srcNode || !tgtNode) continue;
+      if (typeof document !== "undefined") {
         const srcEl = document.getElementById(srcNode.id);
-        if (srcEl) {
-          const x1 = srcNode.x + 220;
-          const y1 = srcNode.y + srcEl.offsetHeight / 2;
-          const x2 = conn.mouseX;
-          const y2 = conn.mouseY;
-          const cx = (x1 + x2) / 2;
-          paths += `<path d="M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.4" stroke-dasharray="6 3"/>`;
-        }
+        const tgtEl = document.getElementById(tgtNode.id);
+        const srcH = srcEl?.offsetHeight ?? DEFAULT_CARD_HEIGHT;
+        const tgtH = tgtEl?.offsetHeight ?? DEFAULT_CARD_HEIGHT;
+        list.push({
+          conn,
+          d: connectionPathD(srcNode, tgtNode, srcH, tgtH),
+          srcNode,
+          tgtNode,
+        });
+      } else {
+        list.push({
+          conn,
+          d: connectionPathD(srcNode, tgtNode, DEFAULT_CARD_HEIGHT, DEFAULT_CARD_HEIGHT),
+          srcNode,
+          tgtNode,
+        });
       }
     }
+    return list;
+  }, [connections, nodes, renderVersion]);
 
-    svg.innerHTML = paths;
-  }, [connections, nodes]);
-
-  useEffect(() => {
-    drawConnections();
-  }, [drawConnections]);
+  const previewBezier = useMemo(() => {
+    void renderVersion;
+    const c = connectingRef.current;
+    if (!c || !connectPreview) return null;
+    const srcNode = nodes.find((n) => n.id === c.sourceNodeId);
+    if (!srcNode) return null;
+    const srcEl =
+      typeof document !== "undefined" ? document.getElementById(srcNode.id) : null;
+    const srcH = srcEl?.offsetHeight ?? DEFAULT_CARD_HEIGHT;
+    const x1 = srcNode.x + CARD_WIDTH;
+    const y1 = srcNode.y + srcH / 2;
+    const x2 = connectPreview.x;
+    const y2 = connectPreview.y;
+    const cx = (x1 + x2) / 2;
+    return `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
+  }, [nodes, connectPreview, renderVersion]);
 
   // ── Drag handling ────────────────────────────────────────────────
 
   useEffect(() => {
     function onMouseMove(e: MouseEvent) {
-      // Handle connection drawing
-      if (connectingRef.current && canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        connectingRef.current.mouseX = e.clientX - rect.left;
-        connectingRef.current.mouseY = e.clientY - rect.top;
-        drawConnections();
+      if (connectingRef.current && scrollRef.current) {
+        const { x, y } = clientToCanvas(e.clientX, e.clientY);
+        setConnectPreview({ x, y });
+        setRenderVersion((v) => v + 1);
         return;
       }
-      // Handle node dragging
-      if (!dragRef.current || !canvasRef.current) return;
-      const rect = canvasRef.current.getBoundingClientRect();
-      const x = Math.max(0, e.clientX - rect.left - dragRef.current.offsetX);
-      const y = Math.max(0, e.clientY - rect.top - dragRef.current.offsetY);
-      dragRef.current.node.x = x;
-      dragRef.current.node.y = y;
+      if (!dragRef.current || !scrollRef.current) return;
+      const { x, y } = clientToCanvas(e.clientX, e.clientY);
+      const nx = Math.max(0, x - dragRef.current.offsetX);
+      const ny = Math.max(0, y - dragRef.current.offsetY);
+      dragRef.current.node.x = nx;
+      dragRef.current.node.y = ny;
       const el = document.getElementById(dragRef.current.node.id);
       if (el) {
-        el.style.left = x + "px";
-        el.style.top = y + "px";
+        el.style.left = nx + "px";
+        el.style.top = ny + "px";
         el.style.zIndex = "100";
       }
-      drawConnections();
+      setRenderVersion((v) => v + 1);
     }
     function onMouseUp(e: MouseEvent) {
-      // Handle connection completion
       const connecting = connectingRef.current;
       if (connecting) {
         const sourceAgentId = connecting.sourceAgentId;
@@ -310,36 +418,41 @@ export function TeamEditor({ team }: TeamEditorProps) {
         const inputHandle = target.closest("[data-handle-type='input']");
         if (inputHandle) {
           const targetNodeId = inputHandle.getAttribute("data-node-id");
-          const targetNode = nodes.find((n) => n.id === targetNodeId);
+          const targetNode = nodesRef.current.find((n) => n.id === targetNodeId);
           if (
             targetNode &&
             targetNode.agentId !== sourceAgentId &&
-            !connections.some(
+            !connectionsRef.current.some(
               (c) => c.source === sourceAgentId && c.target === targetNode.agentId,
             )
           ) {
-            const newTarget = targetNode.agentId;
+            pushUndo();
             setConnections((prev) => [
               ...prev,
-              { source: sourceAgentId, target: newTarget },
+              { source: sourceAgentId, target: targetNode.agentId },
             ]);
           }
         }
         connectingRef.current = null;
         setIsConnecting(false);
-        drawConnections();
+        setConnectPreview(null);
+        setRenderVersion((v) => v + 1);
         return;
       }
-      // Handle node drag end
       const drag = dragRef.current;
       if (drag) {
         const el = document.getElementById(drag.node.id);
         if (el) el.style.zIndex = "";
-        const { id, x, y } = drag.node;
+        const { node, startX, startY } = drag;
+        const { id, x, y } = node;
+        if (x !== startX || y !== startY) {
+          pushUndo();
+        }
         setNodes((prev) =>
           prev.map((n) => (n.id === id ? { ...n, x, y } : n)),
         );
         dragRef.current = null;
+        setRenderVersion((v) => v + 1);
       }
     }
     document.addEventListener("mousemove", onMouseMove);
@@ -348,21 +461,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
-  }, [drawConnections, nodes, connections]);
-
-  // ── Keyboard shortcuts ──────────────────────────────────────────
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedNodeId) {
-        const tag = (e.target as HTMLElement)?.tagName;
-        if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
-        removeNode(selectedNodeId);
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  });
+  }, [clientToCanvas, pushUndo]);
 
   // ── Node operations ─────────────────────────────────────────────
 
@@ -372,6 +471,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
         toast.info(`${agent.name} 已在团队中`);
         return;
       }
+      pushUndo();
       const newId = `node-${nodeIdCounter + 1}`;
       setNodeIdCounter((c) => c + 1);
       const x = 100 + Math.random() * 400;
@@ -389,48 +489,64 @@ export function TeamEditor({ team }: TeamEditorProps) {
       };
       setNodes((prev) => [...prev, newNode]);
       setSelectedNodeId(newId);
+      setSelectedEdge(null);
     },
-    [nodes, nodeIdCounter],
+    [nodes, nodeIdCounter, pushUndo],
   );
 
   const removeNode = useCallback(
     (id: string) => {
+      const node = nodesRef.current.find((n) => n.id === id);
+      if (!node) return;
+      pushUndo();
       setNodes((prev) => prev.filter((n) => n.id !== id));
-      const node = nodes.find((n) => n.id === id);
-      if (node) {
-        setConnections((prev) =>
-          prev.filter((c) => c.source !== node.agentId && c.target !== node.agentId),
-        );
-      }
-      if (selectedNodeId === id) setSelectedNodeId(null);
+      setConnections((prev) =>
+        prev.filter((c) => c.source !== node.agentId && c.target !== node.agentId),
+      );
+      setSelectedNodeId((sel) => (sel === id ? null : sel));
+      setSelectedEdge(null);
     },
-    [nodes, selectedNodeId],
+    [pushUndo],
   );
 
-  function startConnecting(e: React.MouseEvent, node: CanvasNode) {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    connectingRef.current = {
-      sourceAgentId: node.agentId,
-      sourceNodeId: node.id,
-      mouseX: e.clientX - rect.left,
-      mouseY: e.clientY - rect.top,
-    };
-    setIsConnecting(true);
-  }
+  const startConnecting = useCallback(
+    (e: React.MouseEvent, node: CanvasNode) => {
+      e.stopPropagation();
+      e.preventDefault();
+      connectingRef.current = {
+        sourceAgentId: node.agentId,
+        sourceNodeId: node.id,
+      };
+      const { x, y } = clientToCanvas(e.clientX, e.clientY);
+      setConnectPreview({ x, y });
+      setIsConnecting(true);
+      setSelectedEdge(null);
+    },
+    [clientToCanvas],
+  );
 
-  function startDrag(e: React.MouseEvent, node: CanvasNode) {
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-no-drag]") || target.closest("[data-handle-type]")) return;
-    const el = document.getElementById(node.id);
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    dragRef.current = { node, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
-  }
+  const startDrag = useCallback(
+    (e: React.MouseEvent, node: CanvasNode) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-no-drag]") || target.closest("[data-handle-type]")) {
+        return;
+      }
+      if (!scrollRef.current) return;
+      const { x, y } = clientToCanvas(e.clientX, e.clientY);
+      dragRef.current = {
+        node,
+        offsetX: x - node.x,
+        offsetY: y - node.y,
+        startX: node.x,
+        startY: node.y,
+      };
+    },
+    [clientToCanvas],
+  );
 
   const autoLayout = useCallback(() => {
+    if (nodes.length === 0) return;
+    pushUndo();
     const cols = Math.ceil(Math.sqrt(nodes.length));
     setNodes((prev) =>
       prev.map((n, i) => ({
@@ -439,8 +555,37 @@ export function TeamEditor({ team }: TeamEditorProps) {
         y: 60 + Math.floor(i / cols) * 160,
       })),
     );
-    setTimeout(drawConnections, 50);
-  }, [nodes.length, drawConnections]);
+    setRenderVersion((v) => v + 1);
+  }, [nodes.length, pushUndo]);
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+      if (selectedEdge) {
+        pushUndo();
+        setConnections((prev) =>
+          prev.filter(
+            (c) =>
+              !(
+                c.source === selectedEdge.source &&
+                c.target === selectedEdge.target
+              ),
+          ),
+        );
+        setSelectedEdge(null);
+        return;
+      }
+      if (selectedNodeId) {
+        removeNode(selectedNodeId);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedNodeId, selectedEdge, pushUndo, removeNode]);
 
   // ── Save ────────────────────────────────────────────────────────
 
@@ -484,11 +629,16 @@ export function TeamEditor({ team }: TeamEditorProps) {
     });
   }, []);
 
+  const clearCanvasSelection = useCallback(() => {
+    setSelectedNodeId(null);
+    setSelectedEdge(null);
+  }, []);
+
   return (
-    <div className="flex size-full">
+    <div className="flex min-h-0 min-w-0 flex-1">
       {/* ═══ Left: Agent Panel ═══ */}
       {leftOpen && (
-        <div className="bg-card flex w-[280px] shrink-0 flex-col overflow-hidden border-r transition-all">
+        <div className="bg-card flex min-h-0 w-[280px] shrink-0 flex-col overflow-hidden border-r transition-all">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="flex items-center gap-1">
               <button
@@ -516,7 +666,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
               onChange={(e) => setAgentSearch(e.target.value)}
             />
           </div>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="p-2">
               {isLoadingAgents ? (
                 <div className="text-muted-foreground py-8 text-center text-xs">加载角色中...</div>
@@ -578,7 +728,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
       )}
 
       {/* ═══ Center: Canvas ═══ */}
-      <div className="relative flex-1 overflow-hidden" ref={canvasRef}>
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden" ref={canvasRef}>
         {/* Dot grid background */}
         <div
           className="absolute inset-0"
@@ -606,41 +756,124 @@ export function TeamEditor({ team }: TeamEditorProps) {
           </button>
         )}
 
-        {/* SVG connections layer */}
-        <svg ref={svgRef} className="pointer-events-none absolute inset-0 z-0" />
-
-        {/* Canvas content */}
         <div
-          className="absolute inset-0 overflow-auto"
+          ref={scrollRef}
+          className="absolute inset-0 z-[1] overflow-auto"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedNodeId(null);
+            if (e.target === e.currentTarget) {
+              clearCanvasSelection();
+            }
           }}
         >
-          {nodes.length === 0 && (
-            <div className="text-muted-foreground pointer-events-none absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3">
-              <span className="text-5xl opacity-30">🏗️</span>
-              <p className="text-[13px] font-medium">从左侧面板添加角色到画布</p>
-              <p className="text-[11px]">点击角色卡片或拖拽到画布中</p>
-            </div>
-          )}
-
-          {nodes.map((node) => (
-            <div
-              key={node.id}
-              id={node.id}
-              className={cn(
-                "bg-card absolute z-[1] w-[220px] cursor-move select-none rounded-[10px] border transition-shadow hover:shadow-lg",
-                selectedNodeId === node.id
-                  ? "border-primary z-10 shadow-[0_0_0_2px_rgba(99,102,241,0.15),0_4px_24px_rgba(0,0,0,0.3)]"
-                  : "hover:border-white/20",
-              )}
-              style={{ left: node.x, top: node.y }}
-              onMouseDown={(e) => startDrag(e, node)}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedNodeId(node.id);
-              }}
+          <div
+            className="relative"
+            style={{
+              width: contentBounds.w,
+              height: contentBounds.h,
+              zoom: canvasZoom,
+            }}
+            onClick={(e) => {
+              const t = e.target;
+              if (t === e.currentTarget) {
+                clearCanvasSelection();
+                return;
+              }
+              if (t instanceof Element && e.currentTarget.contains(t)) {
+                if (t.closest("[data-team-editor-node]")) return;
+                clearCanvasSelection();
+              }
+            }}
+          >
+            <svg
+              width={contentBounds.w}
+              height={contentBounds.h}
+              className="pointer-events-none absolute top-0 left-0 z-0 overflow-visible"
+              aria-hidden
             >
+              <defs>
+                <marker
+                  id="teamFlowArrow"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="8"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 8 3, 0 6" fill="#6366f1" opacity="0.7" />
+                </marker>
+              </defs>
+              <g className="pointer-events-none">
+                {connectionPaths.map(({ conn, d }) => {
+                  const selected =
+                    selectedEdge?.source === conn.source &&
+                    selectedEdge?.target === conn.target;
+                  return (
+                    <g key={`${conn.source}-${conn.target}`}>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke="transparent"
+                        strokeWidth={18}
+                        className="pointer-events-auto cursor-pointer"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setSelectedEdge(conn);
+                          setSelectedNodeId(null);
+                        }}
+                      />
+                      <path
+                        d={d}
+                        fill="none"
+                        markerEnd="url(#teamFlowArrow)"
+                        pointerEvents="none"
+                        stroke={selected ? "#a5b4fc" : "#6366f1"}
+                        strokeWidth={selected ? 4 : 2}
+                        strokeOpacity={selected ? 1 : 0.65}
+                      />
+                    </g>
+                  );
+                })}
+                {previewBezier ? (
+                  <path
+                    d={previewBezier}
+                    fill="none"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    strokeOpacity={0.4}
+                    strokeDasharray="6 3"
+                    pointerEvents="none"
+                  />
+                ) : null}
+              </g>
+            </svg>
+
+            {nodes.length === 0 && (
+              <div className="text-muted-foreground pointer-events-none absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3">
+                <span className="text-5xl opacity-30">🏗️</span>
+                <p className="text-[13px] font-medium">从左侧面板添加角色到画布</p>
+                <p className="text-[11px]">点击角色卡片或拖拽到画布中</p>
+              </div>
+            )}
+
+            {nodes.map((node) => (
+              <div
+                key={node.id}
+                id={node.id}
+                data-team-editor-node=""
+                className={cn(
+                  "bg-card absolute z-[1] w-[220px] cursor-move select-none rounded-[10px] border transition-shadow hover:shadow-lg",
+                  selectedNodeId === node.id
+                    ? "border-primary z-10 shadow-[0_0_0_2px_rgba(99,102,241,0.15),0_4px_24px_rgba(0,0,0,0.3)]"
+                    : "hover:border-white/20",
+                )}
+                style={{ left: node.x, top: node.y }}
+                onMouseDown={(e) => startDrag(e, node)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedNodeId(node.id);
+                  setSelectedEdge(null);
+                }}
+              >
               {/* Color bar */}
               <div
                 className="h-[3px] rounded-t-[10px]"
@@ -688,27 +921,57 @@ export function TeamEditor({ team }: TeamEditorProps) {
                 className="bg-muted hover:border-primary hover:bg-primary/20 absolute top-1/2 -right-1.5 z-20 h-3 w-3 -translate-y-1/2 cursor-crosshair rounded-full border-2 transition hover:scale-125"
                 onMouseDown={(e) => startConnecting(e, node)}
               />
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Canvas Toolbar */}
         <div className="bg-card absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 gap-0.5 rounded-[10px] border p-1.5 shadow-lg">
-          <button className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition">
+          <button
+            type="button"
+            title="缩小"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition disabled:opacity-40"
+            disabled={canvasZoom <= 0.5}
+            onClick={() =>
+              setCanvasZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 100) / 100))
+            }
+          >
             <ZoomOutIcon className="h-4 w-4" />
           </button>
-          <button className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition">
+          <button
+            type="button"
+            title="放大"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition disabled:opacity-40"
+            disabled={canvasZoom >= 2}
+            onClick={() =>
+              setCanvasZoom((z) => Math.min(2, Math.round((z + 0.1) * 100) / 100))
+            }
+          >
             <ZoomInIcon className="h-4 w-4" />
           </button>
           <div className="bg-border mx-1 my-1 w-px" />
-          <button className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition">
+          <button
+            type="button"
+            title="撤销"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition disabled:opacity-40"
+            disabled={undoStack.length === 0}
+            onClick={undo}
+          >
             <Undo2Icon className="h-4 w-4" />
           </button>
-          <button className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition">
+          <button
+            type="button"
+            title="重做"
+            className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition disabled:opacity-40"
+            disabled={redoStack.length === 0}
+            onClick={redo}
+          >
             <Redo2Icon className="h-4 w-4" />
           </button>
           <div className="bg-border mx-1 my-1 w-px" />
           <button
+            type="button"
             className="text-muted-foreground hover:bg-accent hover:text-foreground flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition"
             onClick={autoLayout}
             title="自动布局"
@@ -717,9 +980,27 @@ export function TeamEditor({ team }: TeamEditorProps) {
           </button>
           <div className="bg-border mx-1 my-1 w-px" />
           <button
-            className="text-muted-foreground hover:bg-accent hover:text-destructive flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition"
-            onClick={() => selectedNodeId && removeNode(selectedNodeId)}
-            title="删除选中"
+            type="button"
+            className="text-muted-foreground hover:bg-accent hover:text-destructive flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition disabled:opacity-40"
+            disabled={!selectedNodeId && !selectedEdge}
+            onClick={() => {
+              if (selectedEdge) {
+                pushUndo();
+                setConnections((prev) =>
+                  prev.filter(
+                    (c) =>
+                      !(
+                        c.source === selectedEdge.source &&
+                        c.target === selectedEdge.target
+                      ),
+                  ),
+                );
+                setSelectedEdge(null);
+              } else if (selectedNodeId) {
+                removeNode(selectedNodeId);
+              }
+            }}
+            title="删除选中的节点或连线"
           >
             <Trash2Icon className="h-4 w-4" />
           </button>
@@ -728,7 +1009,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
 
       {/* ═══ Right: Config Panel ═══ */}
       {rightOpen && (
-        <div className="bg-card flex w-[320px] shrink-0 flex-col overflow-hidden border-l transition-all">
+        <div className="bg-card flex min-h-0 w-[320px] shrink-0 flex-col overflow-hidden border-l transition-all">
           {selectedNode ? (
             <>
               {/* Node config */}
@@ -743,7 +1024,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
                   ✕
                 </button>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="min-h-0 flex-1">
                 <div className="space-y-0">
                   <div className="border-b p-4">
                     <h4 className="text-muted-foreground mb-2.5 text-[11px] font-semibold uppercase tracking-wider">角色信息</h4>
@@ -807,12 +1088,17 @@ export function TeamEditor({ team }: TeamEditorProps) {
                               <strong>{findAgent(c.source).name}</strong>
                             </span>
                             <button
+                              type="button"
                               className="hover:text-destructive cursor-pointer text-[10px] opacity-50 transition hover:opacity-100"
-                              onClick={() =>
+                              onClick={() => {
+                                pushUndo();
                                 setConnections((prev) =>
                                   prev.filter((x) => !(x.source === c.source && x.target === c.target)),
-                                )
-                              }
+                                );
+                                setSelectedEdge((se) =>
+                                  se?.source === c.source && se?.target === c.target ? null : se,
+                                );
+                              }}
                             >
                               ✕
                             </button>
@@ -827,12 +1113,17 @@ export function TeamEditor({ team }: TeamEditorProps) {
                               <strong>{findAgent(c.target).name}</strong>
                             </span>
                             <button
+                              type="button"
                               className="hover:text-destructive cursor-pointer text-[10px] opacity-50 transition hover:opacity-100"
-                              onClick={() =>
+                              onClick={() => {
+                                pushUndo();
                                 setConnections((prev) =>
                                   prev.filter((x) => !(x.source === c.source && x.target === c.target)),
-                                )
-                              }
+                                );
+                                setSelectedEdge((se) =>
+                                  se?.source === c.source && se?.target === c.target ? null : se,
+                                );
+                              }}
                             >
                               ✕
                             </button>
@@ -858,7 +1149,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
                   <PanelRightCloseIcon className="h-4 w-4" />
                 </button>
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="min-h-0 flex-1">
                 <div className="space-y-0">
                   <div className="border-b p-4">
                     <h4 className="text-muted-foreground mb-2.5 text-[11px] font-semibold uppercase tracking-wider">基本信息</h4>
@@ -910,7 +1201,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
                   </div>
                 </div>
               </ScrollArea>
-              <div className="flex flex-col gap-2 border-t p-4">
+              <div className="flex shrink-0 flex-col gap-2 border-t p-4">
                 <Button variant="outline" className="w-full" onClick={handleSave} disabled={updateTeam.isPending}>
                   <SaveIcon className="mr-1.5 h-4 w-4" />
                   {updateTeam.isPending ? "保存中..." : "💾 保存为模板"}

@@ -59,9 +59,9 @@ export function TeamCollaborationSidebar({
   const workingCount = memberStatuses.filter((m) => m.status === "working").length;
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col border-l">
+    <aside className="flex h-full min-h-0 w-[280px] shrink-0 flex-col overflow-hidden border-l bg-background">
       {/* Header */}
-      <div className="border-b px-4 py-3">
+      <div className="shrink-0 border-b px-4 py-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           📋 协作详情
         </h3>
@@ -78,8 +78,8 @@ export function TeamCollaborationSidebar({
         </div>
       </div>
 
-      {/* Members */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      {/* Single scroll region — avoids page-level second scrollbar */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         <div className="space-y-2">
           {team.members.map((member, idx) => {
             const info = agentInfoMap[member.agentId];

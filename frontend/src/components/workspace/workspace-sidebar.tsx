@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
   Sidebar,
   SidebarHeader,
@@ -26,7 +28,11 @@ export function WorkspaceSidebar({
         </SidebarHeader>
         <SidebarContent>
           <WorkspaceNavChatList />
-          {isSidebarOpen && <RecentChatList />}
+          {isSidebarOpen && (
+            <Suspense fallback={null}>
+              <RecentChatList />
+            </Suspense>
+          )}
         </SidebarContent>
         <SidebarFooter>
           <WorkspaceNavMenu />

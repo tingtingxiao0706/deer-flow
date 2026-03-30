@@ -12,7 +12,11 @@ export default function TeamChatLayout({
   return (
     <SubtasksProvider>
       <ArtifactsProvider>
-        <PromptInputProvider>{children}</PromptInputProvider>
+        <PromptInputProvider>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
+        </PromptInputProvider>
       </ArtifactsProvider>
     </SubtasksProvider>
   );

@@ -7,6 +7,8 @@ export interface AgentThreadState extends Record<string, unknown> {
   messages: Message[];
   artifacts: string[];
   todos?: Todo[];
+  /** When set (e.g. by harness later), Recent Chats can route to team UI without localStorage. */
+  team_id?: string;
 }
 
 export interface AgentThread extends Thread<AgentThreadState> {}

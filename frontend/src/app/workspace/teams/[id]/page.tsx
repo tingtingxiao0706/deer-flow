@@ -14,7 +14,7 @@ export default function TeamDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
         <p className="text-muted-foreground">加载中...</p>
       </div>
     );
@@ -22,7 +22,7 @@ export default function TeamDetailPage() {
 
   if (error || !team) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
         <p className="text-muted-foreground">团队不存在</p>
         <Button variant="outline" onClick={() => router.push("/workspace/teams")}>
           <ArrowLeftIcon className="mr-1 h-4 w-4" />
@@ -32,5 +32,9 @@ export default function TeamDetailPage() {
     );
   }
 
-  return <TeamEditor team={team} />;
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <TeamEditor team={team} />
+    </div>
+  );
 }

@@ -178,7 +178,12 @@ function TeamMessageList_({
   }
 
   return (
-    <Conversation className={cn("flex size-full flex-col justify-center", className)}>
+    <Conversation
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 flex-col",
+        className,
+      )}
+    >
       <ConversationContent className="mx-auto w-full max-w-(--container-width-md) gap-6 px-4 pt-6">
         {/* Welcome */}
         {parsed.length === 0 && !thread.isLoading && (

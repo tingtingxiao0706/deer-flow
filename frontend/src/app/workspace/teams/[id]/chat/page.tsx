@@ -1,8 +1,10 @@
 "use client";
 
+import type { Message } from "@langchain/langgraph-sdk";
 import { ArrowLeftIcon, LayoutGridIcon } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { validate as validateUuid } from "uuid";
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import { useAgencyAgents } from "@/core/agency";
 import { useLocalSettings } from "@/core/settings";
 import { useStartTeamChat, useTeam, stopTeamChat, stopTeamChatBeacon } from "@/core/teams";
 import { useThreadStream } from "@/core/threads/hooks";
+import { registerTeamThread } from "@/core/threads/team-thread-links";
 import { uuid } from "@/core/utils/uuid";
 import { cn } from "@/lib/utils";
 
@@ -23,29 +26,63 @@ interface MemberStatus {
   taskDescription?: string;
 }
 
-export default function TeamChatPage() {
+/** Stable JSON signature for message fields that drive team member status UI. Avoids effect loops when `messages` is a new array reference each render. */
+function teamChatMessagesSignature(messages: Message[] | undefined): string {
+  if (!messages?.length) {
+    return "";
+  }
+  const parts = messages.map((msg) => {
+    if (msg.type === "ai" && msg.tool_calls?.length) {
+      return {
+        t: "ai" as const,
+        tc: msg.tool_calls.map((c) => ({
+          n: c.name,
+          ...(c.name === "task"
+            ? {
+                p: String(
+                  (c.args as { prompt?: string } | undefined)?.prompt ?? "",
+                ),
+                d: String(
+                  (c.args as { description?: string } | undefined)
+                    ?.description ?? "",
+                ),
+              }
+            : {}),
+        })),
+      };
+    }
+    if (msg.type === "tool" && msg.tool_call_id) {
+      const content = typeof msg.content === "string" ? msg.content : "";
+      return { t: "tool" as const, c: content };
+    }
+    return { t: msg.type };
+  });
+  return JSON.stringify(parts);
+}
+
+function TeamChatPageInner() {
   const router = useRouter();
   const { id: teamId } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const [settings, setSettings] = useLocalSettings();
   const { data: team, isLoading: teamLoading } = useTeam(teamId);
   const { agents: agencyAgents } = useAgencyAgents();
   const startChat = useStartTeamChat();
 
   const [commanderName, setCommanderName] = useState<string | null>(null);
-  const [threadId] = useState(() => uuid());
-  const [isNewThread, setIsNewThread] = useState(true);
-  const [memberStatuses, setMemberStatuses] = useState<MemberStatus[]>([]);
+  const queryThread = searchParams.get("thread");
+  const resumeThreadId =
+    queryThread && validateUuid(queryThread) ? queryThread : null;
+  const [newSessionId] = useState(() => uuid());
+  const threadId = resumeThreadId ?? newSessionId;
+  const [isNewThread, setIsNewThread] = useState(() => !resumeThreadId);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    if (!team) return;
-    setMemberStatuses(
-      team.members.map((m) => ({
-        agentId: m.agentId,
-        status: "idle" as const,
-      })),
-    );
-  }, [team]);
+    if (teamId && threadId) {
+      registerTeamThread(threadId, teamId);
+    }
+  }, [teamId, threadId]);
 
   useEffect(() => {
     if (!teamId || commanderName) return;
@@ -73,21 +110,37 @@ export default function TeamChatPage() {
     };
   }, [teamId]);
 
-  const [thread, sendMessage] = useThreadStream({
-    threadId: isNewThread ? undefined : threadId,
-    context: {
+  const streamContext = useMemo(
+    () => ({
       ...settings.context,
       agent_name: commanderName ?? undefined,
-    },
+    }),
+    [settings.context, commanderName],
+  );
+
+  const [thread, sendMessage] = useThreadStream({
+    threadId: isNewThread ? undefined : threadId,
+    context: streamContext,
     onStart: () => {
       setIsNewThread(false);
     },
   });
 
-  useEffect(() => {
-    if (!thread.messages || thread.messages.length === 0) return;
-    const newStatuses = memberStatuses.map((ms) => ({ ...ms }));
-    for (const msg of thread.messages) {
+  const messagesSignature = useMemo(
+    () => teamChatMessagesSignature(thread.messages),
+    [thread.messages],
+  );
+
+  const memberStatuses = useMemo((): MemberStatus[] => {
+    if (!team?.members.length) {
+      return [];
+    }
+    const newStatuses: MemberStatus[] = team.members.map((m) => ({
+      agentId: m.agentId,
+      status: "idle",
+    }));
+    const msgs = thread.messages ?? [];
+    for (const msg of msgs) {
       if (msg.type === "ai" && msg.tool_calls) {
         for (const tc of msg.tool_calls) {
           if (tc.name === "task") {
@@ -107,12 +160,15 @@ export default function TeamChatPage() {
           typeof msg.content === "string" ? msg.content : "";
         if (content.startsWith("Task Succeeded")) {
           const working = newStatuses.find((ms) => ms.status === "working");
-          if (working) working.status = "done";
+          if (working) {
+            working.status = "done";
+          }
         }
       }
     }
-    setMemberStatuses(newStatuses);
-  }, [thread.messages]);
+    return newStatuses;
+    // messagesSignature captures message content; omit thread.messages identity to avoid useless recomputation.
+  }, [team, messagesSignature]);
 
   const agentInfoMap = useMemo(() => {
     const map: Record<string, { name: string; emoji: string; skills: string[] }> = {};
@@ -142,7 +198,7 @@ export default function TeamChatPage() {
 
   if (teamLoading || !team) {
     return (
-      <div className="flex size-full items-center justify-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center">
         <div className="text-muted-foreground text-sm">加载团队信息...</div>
       </div>
     );
@@ -150,7 +206,7 @@ export default function TeamChatPage() {
 
   return (
     <ThreadContext.Provider value={{ thread }}>
-      <div className="flex size-full flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-background/80 z-30 flex h-14 shrink-0 items-center gap-3 border-b px-4 backdrop-blur">
           <Button
@@ -210,14 +266,14 @@ export default function TeamChatPage() {
           </div>
         </header>
 
-        {/* Body: chat + sidebar */}
-        <div className="flex min-h-0 flex-1">
+        {/* Body: chat + sidebar — min-h-0 keeps rows within viewport; sidebar scrolls internally */}
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
           {/* Chat area */}
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <main className="flex min-h-0 flex-1 flex-col">
-              <div className="flex size-full justify-center">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                 <TeamMessageList
-                  className="size-full"
+                  className="min-h-0 min-w-0 flex-1"
                   threadId={threadId}
                   thread={thread}
                   team={team}
@@ -225,7 +281,7 @@ export default function TeamChatPage() {
                 />
               </div>
 
-              <div className="z-30 flex justify-center px-4 pb-4">
+              <div className="z-30 flex shrink-0 justify-center px-4 pt-2 pb-4">
                 <div className="relative w-full max-w-(--container-width-md)">
                   <InputBox
                     className="bg-background/5 w-full"
@@ -264,5 +320,19 @@ export default function TeamChatPage() {
         </div>
       </div>
     </ThreadContext.Provider>
+  );
+}
+
+export default function TeamChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <div className="text-muted-foreground text-sm">加载中...</div>
+        </div>
+      }
+    >
+      <TeamChatPageInner />
+    </Suspense>
   );
 }

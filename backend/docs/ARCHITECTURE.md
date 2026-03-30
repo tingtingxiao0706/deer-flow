@@ -67,6 +67,8 @@ The LangGraph server is the core agent runtime, built on LangGraph for robust mu
 
 **Configuration**: `langgraph.json`
 
+**主 Agent → 子 Agent 时序**（Mermaid）：[SUBAGENT_SEQUENCE.md](./SUBAGENT_SEQUENCE.md)
+
 ```json
 {
   "agent": {
